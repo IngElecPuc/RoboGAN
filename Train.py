@@ -4,7 +4,7 @@ import torch.nn as nn
 from torchvision import transforms as tfs
 from torch.utils.data import DataLoader
 from utils import hyperparameters
-from dataset import RobotDataset
+from dataset import RobotDataset, dataset_explore
 from generator import Generator
 from discriminator import Discriminator
 from training import train_gan, test_gan
@@ -46,17 +46,17 @@ if __name__ == '__main__':
 
     train_set = RobotDataset('train', 
                             args.latent_dim, 
-                            args.history_length, 
+                            dataset_explore('train'), 
                             data_transforms, 
                             train=True)
     valid_set = RobotDataset('train', 
                             args.latent_dim, 
-                            args.history_length, 
+                            dataset_explore('train'),
                             data_transforms, 
                             train=False)
     test__set = RobotDataset('train', 
                             args.latent_dim, 
-                            args.history_length, 
+                            dataset_explore('train'),
                             data_transforms, 
                             train=False)
 
