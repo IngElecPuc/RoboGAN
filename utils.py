@@ -34,6 +34,7 @@ class AttetionLayer(nn.Module):
 def hyperparameters(w=320, 
                     h=239, 
                     latent_dim=128, 
+                    seq_len=50,
                     history_length=8, 
                     future_length=12,
                     enc_layers=2,
@@ -49,7 +50,8 @@ def hyperparameters(w=320,
 
     onadict = {
         'latent_dim' : latent_dim,
-        'seq_len'    : history_length,
+        'seq_len'    : seq_len,
+        'history'    : history_length,
         'predict_seq': future_length,
         'afterconv'  : int(512*w5*h5),
         'enc_layers' : enc_layers,

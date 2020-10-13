@@ -30,6 +30,8 @@ if __name__ == '__main__':
     parser.add_argument('--num_workers', help='workers number', default=1, type=int)
     args = parser.parse_args()
 
+    seq_len = max([dataset_explore('train'), dataset_explore('train'), dataset_explore('train')])
+
     nethparams = hyperparameters(w=args.width, 
                             h=args.height, 
                             latent_dim=args.latent_dim, 
@@ -46,17 +48,17 @@ if __name__ == '__main__':
 
     train_set = RobotDataset('train', 
                             args.latent_dim, 
-                            dataset_explore('train'), 
+                            seq_len, 
                             data_transforms, 
                             train=True)
     valid_set = RobotDataset('train', 
                             args.latent_dim, 
-                            dataset_explore('train'),
+                            seq_len,
                             data_transforms, 
                             train=False)
     test__set = RobotDataset('train', 
                             args.latent_dim, 
-                            dataset_explore('train'),
+                            seq_len,
                             data_transforms, 
                             train=False)
 
@@ -80,9 +82,7 @@ if __name__ == '__main__':
             gen, 
             dis, 
             train_loader, 
-            dataset_explore('train'), 
             valid_loader, 
-            dataset_explore('train'), 
             gen_opti, 
             dis_opti, 
             nethparams, 
@@ -91,7 +91,6 @@ if __name__ == '__main__':
     test_gan(gen, 
             dis, 
             test__loader, 
-            dataset_explore('train'), 
             gen_opti, 
             dis_opti, 
             nethparams, 
