@@ -45,9 +45,9 @@ def gan_epoch(gen, dis, loader, gen_opti, dis_opti, params, device, train_model=
     for batch in loader: #Adjust window of the seq to this method
         trimmed = trimm(batch, 
                         params['seq_len'], 
-                        params['history_length'], 
+                        params['history'], 
                         params['predict_seq'], 
-                        params['history_length']/2)
+                        params['history']/2)
         steps = len(trimmed)
 
         for i in range(steps): 
