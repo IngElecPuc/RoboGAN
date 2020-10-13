@@ -1,4 +1,7 @@
 import torch
+from losses import generator_loss, discriminator_loss
+from matplotlib import pyplot as plt
+import time
 
 def trimm(batch, sequence_length, past_length, future_length, stride):
 
@@ -25,7 +28,7 @@ def trimm(batch, sequence_length, past_length, future_length, stride):
 
     return trimmed
 
-def gan_epoch(gen, dis, loader, gen_opti, dis_opti, train_model=True):
+def gan_epoch(gen, dis, loader, gen_opti, dis_opti, params, device, train_model=True):
 
     if (train_model):
         gen.train()
@@ -40,15 +43,19 @@ def gan_epoch(gen, dis, loader, gen_opti, dis_opti, train_model=True):
     correct = 0
 
     for batch in loader: #Adjust window of the seq to this method
-        trimmed = trimm(batch, seq_len, history_length, future_length, history_length/2)
+        trimmed = trimm(batch, 
+                        params['seq_len'], 
+                        params['history_length'], 
+                        params['future_length'], 
+                        params['history_length']/2)
         steps = len(trimmed)
 
         for i in range(steps): 
-            imgs = trimmed['imgs'][i].to(DEVICE)
-            past_routes = trimmed['past_traj'][i].to(DEVICE)
-            real_routes = trimmed['future_traj'][i].to(DEVICE)
-            z = trimmed['noise'][i].to(DEVICE)
-            objective = trimmed['target'][i].to(DEVICE)
+            imgs = trimmed['imgs'][i].to(device)
+            past_routes = trimmed['past_traj'][i].to(device)
+            real_routes = trimmed['future_traj'][i].to(device)
+            z = trimmed['noise'][i].to(device)
+            objective = trimmed['target'][i].to(device)
 
             if imgs.shape[0] == 1: #Bug at some times
                 continue

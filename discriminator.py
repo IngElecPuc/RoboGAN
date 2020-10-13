@@ -83,7 +83,8 @@ class Discriminator(nn.Module):
                           params['enc_layers'], 
                           batch_first=True, 
                           bidirectional=False)
-        self.Attention =  AttetionLayer(params['lstm_dim'], params['lstm_dim'])
+        typeattention = True if params['attention'] == 'add' else False
+        self.Attention =  AttetionLayer(params['lstm_dim'], params['lstm_dim'], additive=typeattention)
         self.Decoder   =  nn.LSTMCell(params['lstm_dim'], params['lstm_dim'], bias=True)
         self.LinearObj =  nn.Sequential(nn.Linear(2, params['latent_dim']), 
                                   nn.BatchNorm1d(params['latent_dim']), 

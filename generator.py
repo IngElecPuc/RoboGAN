@@ -70,7 +70,8 @@ class Generator(nn.Module):
                           params['enc_layers'], 
                           batch_first=True, 
                           bidirectional=False)
-        self.Attention =  AttetionLayer(params['lstm_dim'], params['lstm_dim'])
+        typeattention = True if params['attention'] == 'add' else False
+        self.Attention =  AttetionLayer(params['lstm_dim'], params['lstm_dim'], additive=typeattention)
         self.Decoder   =  nn.LSTMCell(params['lstm_dim'], params['lstm_dim'], bias=True)
         self.LinearOut =  nn.Sequential(nn.Linear(params['lstm_dim'] + params['output_dim'], 2), 
                                   nn.Tanh())
