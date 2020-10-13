@@ -31,14 +31,14 @@ class AttetionLayer(nn.Module):
         weights = self.Soft(weights)
         return weights * values
 
-def basic_parameters(w = 320, 
-                    h = 239, 
+def hyperparameters(w=320, 
+                    h=239, 
                     latent_dim=128, 
                     history_length=8, 
                     future_length=12,
                     enc_layers=2,
                     lstm_dim=128,
-                    out_layers=2,
+                    output_dim=2,
                     attention='add'):
 
     w1, h1 = (w+1)/3, (h+1)/3
@@ -47,14 +47,14 @@ def basic_parameters(w = 320,
     w4, h4 = w3/3, h3/3
     w5, h5 = w4-1, h4-1
 
-    hyperparameters = {
+    onadict = {
         'latent_dim' : latent_dim,
         'seq_len'    : history_length,
         'predict_seq': future_length,
         'afterconv'  : int(512*w5*h5),
         'enc_layers' : enc_layers,
         'lstm_dim'   : lstm_dim,
-        'out_layers' : out_layers,
+        'output_dim' : output_dim,
         'attention'  : attention
     }
-    return hyperparameters
+    return onadict

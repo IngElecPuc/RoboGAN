@@ -89,7 +89,7 @@ def gan_epoch(gen, dis, loader, gen_opti, dis_opti, params, device, train_model=
 
     return gen_mean_loss, dis_mean_loss, dis_accuracy
 
-def train_gan(nepochs, gen, dis, train_loader, valid_loader, gen_opti, dis_opti):
+def train_gan(nepochs, gen, dis, train_loader, valid_loader, gen_opti, dis_opti, params, device):
 
     accum_gen_t_loss = []
     accum_dis_t_loss = []
@@ -102,8 +102,8 @@ def train_gan(nepochs, gen, dis, train_loader, valid_loader, gen_opti, dis_opti)
     
         start = time.time()
 
-        gen_t_loss, dis_t_loss, dis_t_acc = gan_epoch(gen, dis, train_loader, gen_opti, dis_opti, train_model=True)
-        gen_v_loss, dis_v_loss, dis_v_acc = gan_epoch(gen, dis, valid_loader, gen_opti, dis_opti, train_model=False)
+        gen_t_loss, dis_t_loss, dis_t_acc = gan_epoch(gen, dis, train_loader, gen_opti, dis_opti, params, device, train_model=True)
+        gen_v_loss, dis_v_loss, dis_v_acc = gan_epoch(gen, dis, valid_loader, gen_opti, dis_opti, params, device, train_model=False)
         accum_gen_t_loss.append(gen_t_loss)
         accum_dis_t_loss.append(dis_t_loss)
         accum_dis_t_acc.append(dis_t_acc)
@@ -139,9 +139,9 @@ def train_gan(nepochs, gen, dis, train_loader, valid_loader, gen_opti, dis_opti)
     plt.show() #Save img instead
     plt.savefig('train_statistics.png')
 
-def test_gan(gen, dis, test_loader, gen_opti, dis_opti):
+def test_gan(gen, dis, test_loader, gen_opti, dis_opti, params, device):
 
     start = time.time()
-    gen_loss, dis_loss, dis_acc = gan_epoch(gen, dis, test_loader, gen_opti, dis_opti, train_model=False)
+    gen_loss, dis_loss, dis_acc = gan_epoch(gen, dis, test_loader, gen_opti, dis_opti, params, device, train_model=False)
     msj = 'Time {:.3f} sec, gen_loss {:.3f}, dis_loss {:.3f}, dis_acc {:.3f}'
     print(msj.format(time.time()-start, gen_loss, dis_loss, dis_acc))
