@@ -76,5 +76,23 @@ if __name__ == '__main__':
         gen_opti = torch.optim.SGD(gen.parameters(), lr=args.genlr)
         dis_opti = torch.optim.SGD(dis.parameters(), lr=args.dislr)
 
-    train_gan(args.epochs, gen, dis, train_loader, valid_loader, gen_opti, dis_opti, nethparams, device)
-    test_gan(gen, dis, test__loader, gen_opti, dis_opti, nethparams, device)
+    train_gan(args.epochs, 
+            gen, 
+            dis, 
+            train_loader, 
+            dataset_explore('train'), 
+            valid_loader, 
+            dataset_explore('train'), 
+            gen_opti, 
+            dis_opti, 
+            nethparams, 
+            device)
+
+    test_gan(gen, 
+            dis, 
+            test__loader, 
+            dataset_explore('train'), 
+            gen_opti, 
+            dis_opti, 
+            nethparams, 
+            device)
