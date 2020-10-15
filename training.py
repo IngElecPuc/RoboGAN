@@ -92,12 +92,13 @@ def gan_epoch(gen, dis, loader, gen_opti, dis_opti, params, device, train_model=
 
 def train_gan(nepochs, gen, dis, train_loader, valid_loader, gen_opti, dis_opti, params, device):
 
-    accum_gen_t_loss = []
-    accum_dis_t_loss = []
-    accum_dis_t_acc = []
-    accum_gen_v_loss = []
-    accum_dis_v_loss = []
-    accum_dis_v_acc = []
+    training_log = {}
+    training_log['gen_t_loss'] = []
+    training_log['dis_t_loss'] = []
+    training_log['dis_t_acc'] = []
+    training_log['gen_v_loss'] = []
+    training_log['dis_v_loss'] = []
+    training_log['dis_v_acc'] = []
 
     for epoch in range(nepochs):
     
@@ -105,12 +106,12 @@ def train_gan(nepochs, gen, dis, train_loader, valid_loader, gen_opti, dis_opti,
 
         gen_t_loss, dis_t_loss, dis_t_acc = gan_epoch(gen, dis, train_loader, gen_opti, dis_opti, params, device, train_model=True)
         gen_v_loss, dis_v_loss, dis_v_acc = gan_epoch(gen, dis, valid_loader, gen_opti, dis_opti, params, device, train_model=False)
-        accum_gen_t_loss.append(gen_t_loss)
-        accum_dis_t_loss.append(dis_t_loss)
-        accum_dis_t_acc.append(dis_t_acc)
-        accum_gen_v_loss.append(gen_v_loss)
-        accum_dis_v_loss.append(dis_v_loss)
-        accum_dis_v_acc.append(dis_v_acc)
+        training_log['gen_t_loss'].append(gen_t_loss)
+        training_log['dis_t_loss'].append(dis_t_loss)
+        training_log['dis_t_acc'].append(dis_t_acc)
+        training_log['gen_v_loss'].append(gen_v_loss)
+        training_log['dis_v_loss'].append(dis_v_loss)
+        training_log['dis_v_acc'].append(dis_v_acc)
 
         msj = 'Epoch {:03d}: time {:.3f} sec, gen_t_loss {:.3f}, dis_t_loss {:.3f}, dis_t_acc {:.3f}, gen_v_loss {:.3f}, dis_v_loss {:.3f}, dis_v_acc {:.5f}'
         print(msj.format(epoch+1, time.time()-start, gen_t_loss, dis_t_loss, dis_v_acc, gen_v_loss, dis_v_loss, dis_v_acc))
@@ -120,25 +121,35 @@ def train_gan(nepochs, gen, dis, train_loader, valid_loader, gen_opti, dis_opti,
 
     fig = plt.figure(figsize=(12.8,14.4))
     plt.subplot(3, 3, 1)
-    plt.plot(list(range(nepochs)), accum_gen_t_loss)
+    plt.plot(list(range(nepochs)), training_log['gen_t_loss'])
+    plt.title('Generator training loss')
     plt.subplot(3, 3, 2)
-    plt.plot(list(range(nepochs)), accum_dis_t_loss)
+    plt.plot(list(range(nepochs)), training_log['dis_t_loss'])
+    plt.title('Discriminator training loss')
     plt.subplot(3, 3, 3)
-    plt.plot(list(range(nepochs)), accum_gen_t_loss, list(range(nepochs)), accum_dis_t_loss)
+    plt.plot(list(range(nepochs)), training_log['gen_t_loss'], list(range(nepochs)), training_log['dis_t_loss'])
+    plt.title('Generator training loss')
     plt.subplot(3, 3, 4)
-    plt.plot(list(range(nepochs)), accum_gen_v_loss)
+    plt.plot(list(range(nepochs)), training_log['gen_v_loss'])
+    plt.title('Generator validation loss')
     plt.subplot(3, 3, 5)
-    plt.plot(list(range(nepochs)), accum_dis_v_loss)
+    plt.plot(list(range(nepochs)), training_log['dis_v_loss'])
+    plt.title('Discriminator validation loss')
     plt.subplot(3, 3, 6)
-    plt.plot(list(range(nepochs)), accum_gen_v_loss, list(range(nepochs)), accum_dis_v_loss)
+    plt.plot(list(range(nepochs)), training_log['gen_v_loss'], list(range(nepochs)), training_log['dis_v_loss'])
+    plt.title('Generator validation loss and Discriminator validation loss')
     plt.subplot(3, 3, 7)
-    plt.plot(list(range(nepochs)), accum_dis_t_acc)
+    plt.plot(list(range(nepochs)), training_log['dis_t_acc'])
+    plt.title('Discriminator training accuracy')
     plt.subplot(3, 3, 8)
-    plt.plot(list(range(nepochs)), accum_dis_v_acc)
+    plt.plot(list(range(nepochs)), training_log['dis_v_acc'])
+    plt.title('Discriminator validation accuracy')
     plt.subplot(3, 3, 9)
-    plt.plot(list(range(nepochs)), accum_dis_t_acc, list(range(nepochs)), accum_dis_v_acc)
-    plt.show() #Save img instead
+    plt.plot(list(range(nepochs)), training_log['dis_t_acc'], list(range(nepochs)), training_log['dis_v_acc'])
+    plt.title('Discriminator validation accuracy and Discriminator validation accuracy')
+    #plt.show() #Save img instead
     plt.savefig('train_statistics.png')
+    return training_log
 
 def test_gan(gen, dis, test_loader, gen_opti, dis_opti, params, device):
 
@@ -146,3 +157,4 @@ def test_gan(gen, dis, test_loader, gen_opti, dis_opti, params, device):
     gen_loss, dis_loss, dis_acc = gan_epoch(gen, dis, test_loader, gen_opti, dis_opti, params, device, train_model=False)
     msj = 'Time {:.3f} sec, gen_loss {:.3f}, dis_loss {:.3f}, dis_acc {:.3f}'
     print(msj.format(time.time()-start, gen_loss, dis_loss, dis_acc))
+    return gen_loss, dis_loss, dis_acc

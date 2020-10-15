@@ -30,7 +30,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_workers', help='workers number', default=1, type=int)
     args = parser.parse_args()
 
-    seq_len = max([dataset_explore('train'), dataset_explore('train'), dataset_explore('train')])
+    seq_len = max([dataset_explore('train'), dataset_explore('valid'), dataset_explore('test')]) #Max sequence length in the data set
 
     nethparams = hyperparameters(w=args.width, 
                             h=args.height, 
@@ -51,12 +51,12 @@ if __name__ == '__main__':
                             seq_len, 
                             data_transforms, 
                             train=True)
-    valid_set = RobotDataset('train', 
+    valid_set = RobotDataset('valid', 
                             args.latent_dim, 
                             seq_len,
                             data_transforms, 
                             train=False)
-    test__set = RobotDataset('train', 
+    test__set = RobotDataset('valid', 
                             args.latent_dim, 
                             seq_len,
                             data_transforms, 
@@ -78,7 +78,7 @@ if __name__ == '__main__':
         gen_opti = torch.optim.SGD(gen.parameters(), lr=args.genlr)
         dis_opti = torch.optim.SGD(dis.parameters(), lr=args.dislr)
 
-    train_gan(args.epochs, 
+    log = train_gan(args.epochs, 
             gen, 
             dis, 
             train_loader, 
@@ -88,10 +88,18 @@ if __name__ == '__main__':
             nethparams, 
             device)
 
-    test_gan(gen, 
+    mini_log = test_gan(gen, 
             dis, 
             test__loader, 
             gen_opti, 
             dis_opti, 
             nethparams, 
             device)
+
+    log['testg_loss'] = mini_log[0]
+    log['testd_loss'] = mini_log[1]
+    log['testd_acc'] = mini_log[2]
+
+    import json 
+    with open('Training_log.txt', 'w') as json_file:
+        json.dump(log, json_file)
