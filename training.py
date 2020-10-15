@@ -43,6 +43,7 @@ def gan_epoch(gen, dis, loader, gen_opti, dis_opti, params, device, train_model=
     correct = 0
 
     for batch in loader: #Adjust window of the seq to this method
+       
         trimmed = trimm(batch, 
                         params['seq_len'], 
                         params['history'], 

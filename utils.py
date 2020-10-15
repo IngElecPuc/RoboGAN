@@ -59,4 +59,5 @@ def hyperparameters(w=320,
         'output_dim' : output_dim,
         'attention'  : attention
     }
+
     return onadict
