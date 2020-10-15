@@ -114,6 +114,11 @@ class Discriminator(nn.Module):
         p = self.DownTime(prediction.permute(0, 2, 1))
         p = p.permute(0, 2, 1)
         p = self.LinearP(p.reshape(-1, 2))
+        print("Error when x = torch.cat((x, p.view(b, s, -1)), 2)")
+        print("x ", x.shape)
+        print("p ", p.shape)
+        print("b ", b)
+        print("s", s)
         x = torch.cat((x, p.view(b, s, -1)), 2)
         
         h0_enc = torch.zeros((self.p['enc_layers'], b, self.p['lstm_dim'])).to(self.device)

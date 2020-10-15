@@ -29,7 +29,7 @@ class RobotDataset(Dataset):
 
     def __getitem__(self, idx):
         imgs = sorted(os.listdir(self.imgspaths[idx]))
-        for i in range(len(imgs)): #Agregar padd zero de imágenes y trayectorias
+        for i in range(len(imgs)): 
             img = Image.open(self.imgspaths[idx] + '/' + imgs[i])
             if (i == 0):
                 sec_tensor = self.transforms(img)
@@ -40,7 +40,7 @@ class RobotDataset(Dataset):
                 next_frame = next_frame.view(1, c, w, h)
                 sec_tensor = torch.cat((sec_tensor, next_frame))
 
-        for j in range(i+1, self.sequence_length):
+        for j in range(i+1, self.sequence_length): #Zero padding to fit sequence length
                 next_frame = torch.zeros((1, c, w, h))
                 sec_tensor = torch.cat((sec_tensor, next_frame))
 
@@ -63,7 +63,7 @@ class RobotDataset(Dataset):
                 trajectory.append([x, y])
                 target.append([rho, theta])
 
-            for i in range(curr_row, self.sequence_length):
+            for i in range(curr_row, self.sequence_length): #Zero padding to fit sequence length
                 trajectory.append([0.0, 0.0])
                 target.append([0.0, 0.0])
 
