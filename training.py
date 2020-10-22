@@ -1,10 +1,15 @@
 import torch
 from losses import generator_loss, discriminator_loss
+from metrics import ADE, FDE
 from matplotlib import pyplot as plt
 import time
+import datetime
+import json
 
-def trimm(batch, sequence_length, past_length, future_length, stride):
-
+def trimm(batch, sequence_length, past_length, future_length, stride, trim_mode='absolute'):
+    #This fuction will cut the entire sequence in chunks for the prediction
+    #The Robot can only remember past_length steps of history for a prediction of size equal to future_length
+    #The stride will serve to not overfitt the network to the training trajectories
     trimmed = {
         'noise' : [],
         'imgs' : [], 
@@ -12,21 +17,38 @@ def trimm(batch, sequence_length, past_length, future_length, stride):
         'future_traj' : [],
         'target' : []
     }
-    noise = batch['noise'].permute(1, 0, 2)
-    imgs = batch['imgs'].permute(1, 0, 2, 3, 4)
-    trajectory = batch['trajectory'].permute(1, 0, 2)
-    target = batch['target'].permute(1, 0, 2)
 
-    num_cuts = int((sequence_length - past_length) / stride)
+    num_cuts = int((sequence_length - past_length - future_length) / (past_length - stride))
+    jump = past_length - stride
 
-    for i in range(num_cuts):
-        trimmed['noise'].append(noise[i:i+past_length].permute(1, 0, 2))
-        trimmed['imgs'].append(imgs[i:i+past_length].permute(1, 0, 2, 3, 4))
-        trimmed['past_traj'].append(trajectory[i:i+past_length].permute(1, 0, 2))
-        trimmed['future_traj'].append(trajectory[i+past_length:i+past_length+future_length].permute(1, 0, 2))
-        trimmed['target'].append(target[i:i+past_length].permute(1, 0, 2))
+    for i in range(num_cuts): #cuting chunks for prediction in a limited window
+        #historical cuts
+        trimmed['noise'].append(batch['noise'].narrow(1, i * jump, past_length))
+        trimmed['imgs'].append(batch['imgs'].narrow(1, i * jump, past_length))
+        trimmed['past_traj'].append(batch['trajectory'].narrow(1, i * jump, past_length))
+        #future cuts
+        trimmed['future_traj'].append(batch['trajectory'].narrow(1, i * jump + past_length, future_length))
+        trimmed['target'].append(batch['target'].narrow(1, i * jump + past_length, future_length))
 
+    if trim_mode == 'relative':
+        #Translating each chunk to current robot's position
+        for (past, futu) in zip(trimmed['past_traj'], trimmed['future_traj']):
+            traj = past.permute(2, 1, 0).clone()
+            xn = traj[0][-1] #last x coordinate of all the batch
+            yn = traj[1][-1]
+            traj[0] = traj[0] - xn #Moving to the origin
+            traj[1] = traj[1] - yn 
+            trimmed['past_traj'][i] = traj.permute(2, 1, 0)
+            traj = futu.permute(2, 1, 0).clone()
+            x0 = traj[0][0] #first x coordinate of all the batch
+            y0 = traj[1][0]
+            traj[0] = traj[0] - x0 #Moving to the origin
+            traj[1] = traj[1] - y0 
+            trimmed['future_traj'][i] = traj.permute(2, 1, 0)
+            #We dont do this to the target because it it supposed to be calculated from current position from the simulator 
+    
     return trimmed
+
 
 def gan_epoch(gen, dis, loader, gen_opti, dis_opti, params, device, train_model=True):
 
@@ -48,7 +70,9 @@ def gan_epoch(gen, dis, loader, gen_opti, dis_opti, params, device, train_model=
                         params['seq_len'], 
                         params['history'], 
                         params['predict_seq'], 
-                        params['history']/2)
+                        int(params['history']/2), 
+                        trim_mode='relative')
+
         steps = len(trimmed)
 
         for i in range(steps): 
@@ -90,7 +114,7 @@ def gan_epoch(gen, dis, loader, gen_opti, dis_opti, params, device, train_model=
 
     return gen_mean_loss, dis_mean_loss, dis_accuracy
 
-def train_gan(nepochs, gen, dis, train_loader, valid_loader, gen_opti, dis_opti, params, device):
+def train_gan(nepochs, gen, dis, train_loader, valid_loader, gen_opti, dis_opti, params, device, name):
 
     training_log = {}
     training_log['gen_t_loss'] = []
@@ -114,12 +138,23 @@ def train_gan(nepochs, gen, dis, train_loader, valid_loader, gen_opti, dis_opti,
         training_log['dis_v_acc'].append(dis_v_acc)
 
         msj = 'Epoch {:03d}: time {:.3f} sec, gen_t_loss {:.3f}, dis_t_loss {:.3f}, dis_t_acc {:.3f}, gen_v_loss {:.3f}, dis_v_loss {:.3f}, dis_v_acc {:.5f}'
-        print(msj.format(epoch+1, time.time()-start, gen_t_loss, dis_t_loss, dis_v_acc, gen_v_loss, dis_v_loss, dis_v_acc))
+        #print(msj.format(epoch+1, time.time()-start, gen_t_loss, dis_t_loss, dis_v_acc, gen_v_loss, dis_v_loss, dis_v_acc))
+        
+        with open('train_progress.txt', 'w') as json_file:
+            json.dump(msj.format(epoch+1, 
+                    datetime.timedelta(seconds=int(time.time()-start)),
+                    gen_t_loss, 
+                    dis_t_loss, 
+                    dis_v_acc, 
+                    gen_v_loss, 
+                    dis_v_loss, 
+                    dis_v_acc),
+                    json_file)
 
         torch.save(gen.state_dict(), './gen.pth')
         torch.save(dis.state_dict(), './dis.pth')
 
-    fig = plt.figure(figsize=(12.8,14.4))
+    fig = plt.figure(figsize=(12.8, 14.4))
     plt.subplot(3, 3, 1)
     plt.plot(list(range(nepochs)), training_log['gen_t_loss'])
     plt.title('Generator training loss')
@@ -128,7 +163,7 @@ def train_gan(nepochs, gen, dis, train_loader, valid_loader, gen_opti, dis_opti,
     plt.title('Discriminator training loss')
     plt.subplot(3, 3, 3)
     plt.plot(list(range(nepochs)), training_log['gen_t_loss'], list(range(nepochs)), training_log['dis_t_loss'])
-    plt.title('Generator training loss')
+    plt.title('Both of them')
     plt.subplot(3, 3, 4)
     plt.plot(list(range(nepochs)), training_log['gen_v_loss'])
     plt.title('Generator validation loss')
@@ -137,7 +172,7 @@ def train_gan(nepochs, gen, dis, train_loader, valid_loader, gen_opti, dis_opti,
     plt.title('Discriminator validation loss')
     plt.subplot(3, 3, 6)
     plt.plot(list(range(nepochs)), training_log['gen_v_loss'], list(range(nepochs)), training_log['dis_v_loss'])
-    plt.title('Generator validation loss and Discriminator validation loss')
+    plt.title('Both of them')
     plt.subplot(3, 3, 7)
     plt.plot(list(range(nepochs)), training_log['dis_t_acc'])
     plt.title('Discriminator training accuracy')
@@ -146,9 +181,9 @@ def train_gan(nepochs, gen, dis, train_loader, valid_loader, gen_opti, dis_opti,
     plt.title('Discriminator validation accuracy')
     plt.subplot(3, 3, 9)
     plt.plot(list(range(nepochs)), training_log['dis_t_acc'], list(range(nepochs)), training_log['dis_v_acc'])
-    plt.title('Discriminator validation accuracy and Discriminator validation accuracy')
+    plt.title('Both of them')
     #plt.show() #Save img instead
-    plt.savefig('train_statistics.png')
+    plt.savefig('train_statistics_' + name + '.png')
     return training_log
 
 def test_gan(gen, dis, test_loader, gen_opti, dis_opti, params, device):
@@ -156,5 +191,5 @@ def test_gan(gen, dis, test_loader, gen_opti, dis_opti, params, device):
     start = time.time()
     gen_loss, dis_loss, dis_acc = gan_epoch(gen, dis, test_loader, gen_opti, dis_opti, params, device, train_model=False)
     msj = 'Time {:.3f} sec, gen_loss {:.3f}, dis_loss {:.3f}, dis_acc {:.3f}'
-    print(msj.format(time.time()-start, gen_loss, dis_loss, dis_acc))
+    print(msj.format(datetime.timedelta(seconds=int(time.time()-start)), gen_loss, dis_loss, dis_acc))
     return gen_loss, dis_loss, dis_acc

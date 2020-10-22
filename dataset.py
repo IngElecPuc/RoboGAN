@@ -8,7 +8,7 @@ from PIL import Image
 import csv
 
 class RobotDataset(Dataset):
-    def __init__(self, path, latent_dim, sequence_length, transforms, train=True):
+    def __init__(self, path, latent_dim, sequence_length, transforms):
         scenes = os.listdir(path)
         self.imgspaths = []
         self.trajpaths = []
@@ -29,6 +29,8 @@ class RobotDataset(Dataset):
 
     def __getitem__(self, idx):
         imgs = sorted(os.listdir(self.imgspaths[idx]))
+        if len(imgs) == 0:
+            raise Exception("Empty folder with", self.imgspaths[idx])
         for i in range(len(imgs)): 
             img = Image.open(self.imgspaths[idx] + '/' + imgs[i])
             if (i == 0):
@@ -40,9 +42,9 @@ class RobotDataset(Dataset):
                 next_frame = next_frame.view(1, c, w, h)
                 sec_tensor = torch.cat((sec_tensor, next_frame))
 
-        for j in range(i+1, self.sequence_length): #Zero padding to fit sequence length
-                next_frame = torch.zeros((1, c, w, h))
-                sec_tensor = torch.cat((sec_tensor, next_frame))
+        for j in range(len(imgs), self.sequence_length): #Zero padding to fit sequence length
+            next_frame = torch.zeros((1, c, w, h))
+            sec_tensor = torch.cat((sec_tensor, next_frame))
 
         trajectory = []
         target = []

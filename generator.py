@@ -78,7 +78,7 @@ class Generator(nn.Module):
 
     def forward(self, imgs, z, past_traj, target):
         b, s, c, w, h = imgs.shape #[batch, seq_len, num_channels, width, height]
-        imgs = imgs.view(b*s, c, w, h) #4 dim tensor to Conv2D
+        imgs = imgs.reshape(b*s, c, w, h) #4 dim tensor to Conv2D
 
         x = self.Conv2D1(imgs)
         x = self.Conv2D2(x)
@@ -87,13 +87,13 @@ class Generator(nn.Module):
         x = self.Conv2D5(x)
 
         _, c, w, h = x.shape
-        x = x.view(-1, c*w*h)
+        x = x.reshape(-1, c*w*h)
         
         x = self.LinearI(x)        
-        t = self.LinearT(past_traj.view(-1, 2))
-        x = torch.cat((x.view(b, s, -1), t.view(b, s, -1)), 2)
-        z = self.LinearZ(z.view(-1, self.p['latent_dim']))
-        x = torch.cat((x, z.view(b, s, -1)), 2)
+        t = self.LinearT(past_traj.reshape(-1, 2))
+        x = torch.cat((x.reshape(b, s, -1), t.reshape(b, s, -1)), 2)
+        z = self.LinearZ(z.reshape(-1, self.p['latent_dim']))
+        x = torch.cat((x, z.reshape(b, s, -1)), 2)
         
         h0_enc = torch.zeros((self.p['enc_layers'], b, self.p['lstm_dim'])).to(self.device)
         c0_enc = torch.zeros((self.p['enc_layers'], b, self.p['lstm_dim'])).to(self.device) 
@@ -109,12 +109,12 @@ class Generator(nn.Module):
                 context_vector = self.Attention(h0_dec, ht_enc[self.p['enc_layers']-1])
                 ht_dec, ct_dec = self.Decoder(context_vector, (h0_dec, c0_dec))
                 x = torch.cat((ht_dec, target), 1)
-                out = self.LinearOut(x).view(b, 1, -1)
+                out = self.LinearOut(x).reshape(b, 1, -1)
             else:
                 context_vector = self.Attention(ht_dec, ht_enc[self.p['enc_layers']-1])
                 ht_dec, ct_dec = self.Decoder(context_vector, (ht_dec, ct_dec))
                 x = torch.cat((ht_dec, target), 1)
                 x = self.LinearOut(x)
-                out = torch.cat((out, x.view(b, 1, -1)), 1)    
+                out = torch.cat((out, x.reshape(b, 1, -1)), 1)    
         
         return out

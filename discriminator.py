@@ -97,7 +97,7 @@ class Discriminator(nn.Module):
 
     def forward(self, imgs, prediction, past_traj, target):
         b, s, c, w, h = imgs.shape #[batch, seq_len, num_channels, width, height]
-        imgs = imgs.view(b*s, c, w, h) #4 dim tensor to Conv2D
+        imgs = imgs.reshape(b*s, c, w, h) #4 dim tensor to Conv2D
 
         x = self.Conv2D1(imgs)
         x = self.Conv2D2(x)
@@ -106,15 +106,15 @@ class Discriminator(nn.Module):
         x = self.Conv2D5(x)
 
         _, c, w, h = x.shape
-        x = x.view(-1, c*w*h)
+        x = x.reshape(-1, c*w*h)
         
         x = self.LinearI(x)        
-        t = self.LinearT(past_traj.view(-1, 2))
-        x = torch.cat((x.view(b, s, -1), t.view(b, s, -1)), 2)
+        t = self.LinearT(past_traj.reshape(-1, 2))
+        x = torch.cat((x.reshape(b, s, -1), t.reshape(b, s, -1)), 2)
         p = self.DownTime(prediction.permute(0, 2, 1))
         p = p.permute(0, 2, 1)
         p = self.LinearP(p.reshape(-1, 2))
-        x = torch.cat((x, p.view(b, s, -1)), 2)
+        x = torch.cat((x, p.reshape(b, s, -1)), 2)
         
         h0_enc = torch.zeros((self.p['enc_layers'], b, self.p['lstm_dim'])).to(self.device)
         c0_enc = torch.zeros((self.p['enc_layers'], b, self.p['lstm_dim'])).to(self.device) 

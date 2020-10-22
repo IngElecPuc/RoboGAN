@@ -12,6 +12,7 @@ import numpy as np
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='for training')
+    parser.add_argument('--name', help='Sesion name', default='simple', type=str)
     parser.add_argument('--latent_dim', help='Z latent dimension', default=128, type=int)
     parser.add_argument('--history_length', help='history window', default=8, type=int)
     parser.add_argument('--future_length', help='prediction steps', default=12, type=int)
@@ -49,24 +50,21 @@ if __name__ == '__main__':
     train_set = RobotDataset('train', 
                             args.latent_dim, 
                             seq_len, 
-                            data_transforms, 
-                            train=True)
+                            data_transforms)
     valid_set = RobotDataset('valid', 
                             args.latent_dim, 
                             seq_len,
-                            data_transforms, 
-                            train=False)
-    test__set = RobotDataset('valid', 
+                            data_transforms)
+    test__set = RobotDataset('test', 
                             args.latent_dim, 
                             seq_len,
-                            data_transforms, 
-                            train=False)
+                            data_transforms)
 
     train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True)
     valid_loader = DataLoader(valid_set, batch_size=args.batch_size, shuffle=False)
     test__loader = DataLoader(test__set, batch_size=args.batch_size, shuffle=False)
 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
     gen = Generator(nethparams, device).to(device)
     dis = Discriminator(nethparams, device).to(device)
@@ -86,7 +84,8 @@ if __name__ == '__main__':
             gen_opti, 
             dis_opti, 
             nethparams, 
-            device)
+            device,
+            args.name)
 
     mini_log = test_gan(gen, 
             dis, 
@@ -101,5 +100,5 @@ if __name__ == '__main__':
     log['testd_acc'] = mini_log[2]
 
     import json 
-    with open('Training_log.txt', 'w') as json_file:
+    with open('Training_log_' + args.name + '.txt', 'w') as json_file:
         json.dump(log, json_file)
