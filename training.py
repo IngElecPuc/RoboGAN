@@ -62,7 +62,8 @@ def gan_epoch(gen, dis, loader, gen_opti, dis_opti, params, device, train_model=
 
     gen_mean_loss = 0
     dis_mean_loss = 0
-    correct = 0
+    ADE_mean = 0
+    FDE_mean = 0
 
     for batch in loader: #Adjust window of the seq to this method
        
@@ -90,6 +91,8 @@ def gan_epoch(gen, dis, loader, gen_opti, dis_opti, params, device, train_model=
             fake_routes = gen(imgs, z, past_routes, objective)
             real_output = dis(imgs, real_routes, past_routes, objective)
             fake_output = dis(imgs, fake_routes, past_routes, objective)
+            ADE_mean += ADE(real_routes, fake_routes)/steps
+            FDE_mean += FDE(real_routes, fake_routes)/steps
 
             dis_loss = discriminator_loss(real_output, fake_output)
             dis_opti.zero_grad()
@@ -97,8 +100,6 @@ def gan_epoch(gen, dis, loader, gen_opti, dis_opti, params, device, train_model=
                 dis_loss.backward(retain_graph=True)
                 dis_opti.step()
             dis_mean_loss += dis_loss.item()/steps
-            correct += real_output.eq(torch.ones_like(real_output)).sum().item()
-            correct += fake_output.eq(torch.ones_like(fake_output)).sum().item()
 
             fake_output = dis(imgs, fake_routes, past_routes, objective) #Check if this step is really necessary
             gen_loss = generator_loss(fake_output)
@@ -110,77 +111,92 @@ def gan_epoch(gen, dis, loader, gen_opti, dis_opti, params, device, train_model=
 
     gen_mean_loss /= len(loader.dataset)
     dis_mean_loss /= len(loader.dataset)
-    dis_accuracy = correct/len(loader.dataset)
+    ADE_mean /= len(loader.dataset)
+    FDE_mean /= len(loader.dataset)
 
-    return gen_mean_loss, dis_mean_loss, dis_accuracy
+    return gen_mean_loss, dis_mean_loss, ADE_mean, FDE_mean
 
 def train_gan(nepochs, gen, dis, train_loader, valid_loader, gen_opti, dis_opti, params, device, name):
 
     training_log = {}
     training_log['gen_t_loss'] = []
     training_log['dis_t_loss'] = []
-    training_log['dis_t_acc'] = []
+    training_log['ADE_t'] = []
+    training_log['FDE_t'] = []
     training_log['gen_v_loss'] = []
     training_log['dis_v_loss'] = []
-    training_log['dis_v_acc'] = []
+    training_log['ADE_v'] = []
+    training_log['FDE_v'] = []
 
     for epoch in range(nepochs):
     
         start = time.time()
 
-        gen_t_loss, dis_t_loss, dis_t_acc = gan_epoch(gen, dis, train_loader, gen_opti, dis_opti, params, device, train_model=True)
-        gen_v_loss, dis_v_loss, dis_v_acc = gan_epoch(gen, dis, valid_loader, gen_opti, dis_opti, params, device, train_model=False)
+        gen_t_loss, dis_t_loss, ADE_t, FDE_t = gan_epoch(gen, dis, train_loader, gen_opti, dis_opti, params, device, train_model=True)
+        gen_v_loss, dis_v_loss, ADE_v, FDE_v = gan_epoch(gen, dis, valid_loader, gen_opti, dis_opti, params, device, train_model=False)
         training_log['gen_t_loss'].append(gen_t_loss)
         training_log['dis_t_loss'].append(dis_t_loss)
-        training_log['dis_t_acc'].append(dis_t_acc)
+        training_log['ADE_t'].append(ADE_t)
+        training_log['FDE_t'].append(FDE_t)
         training_log['gen_v_loss'].append(gen_v_loss)
         training_log['dis_v_loss'].append(dis_v_loss)
-        training_log['dis_v_acc'].append(dis_v_acc)
+        training_log['ADE_v'].append(ADE_v)
+        training_log['FDE_v'].append(FDE_v)
 
-        msj = 'Epoch {:03d}: time {:.3f} sec, gen_t_loss {:.3f}, dis_t_loss {:.3f}, dis_t_acc {:.3f}, gen_v_loss {:.3f}, dis_v_loss {:.3f}, dis_v_acc {:.5f}'
-        #print(msj.format(epoch+1, time.time()-start, gen_t_loss, dis_t_loss, dis_v_acc, gen_v_loss, dis_v_loss, dis_v_acc))
-        
-        with open('train_progress.txt', 'w') as json_file:
-            json.dump(msj.format(epoch+1, 
+        msj = 'Epoch {:03d}: time {} sec, gen_t_loss {:.3f}, dis_t_loss {:.3f}, ADE_t {:.3f}, FDE_t {:.3f}, gen_v_loss {:.3f}, dis_v_loss {:.3f}, ADE_v {:.3f}, FDE_v {:.3f}\n'
+        msj.format(epoch+1, 
                     datetime.timedelta(seconds=int(time.time()-start)),
                     gen_t_loss, 
                     dis_t_loss, 
-                    dis_v_acc, 
+                    ADE_t, 
+                    FDE_t,
                     gen_v_loss, 
                     dis_v_loss, 
-                    dis_v_acc),
-                    json_file)
+                    ADE_v,
+                    FDE_v)
+
+        with open('train_progress.txt', 'w') as json_file:
+            json.dump(msj, json_file)
 
         torch.save(gen.state_dict(), './gen.pth')
         torch.save(dis.state_dict(), './dis.pth')
 
-    fig = plt.figure(figsize=(12.8, 14.4))
-    plt.subplot(3, 3, 1)
+    plt.figure(figsize=(12.8, 19.2))
+    plt.subplot(4, 3, 1)
     plt.plot(list(range(nepochs)), training_log['gen_t_loss'])
     plt.title('Generator training loss')
-    plt.subplot(3, 3, 2)
+    plt.subplot(4, 3, 2)
     plt.plot(list(range(nepochs)), training_log['dis_t_loss'])
     plt.title('Discriminator training loss')
-    plt.subplot(3, 3, 3)
+    plt.subplot(4, 3, 3)
     plt.plot(list(range(nepochs)), training_log['gen_t_loss'], list(range(nepochs)), training_log['dis_t_loss'])
     plt.title('Both of them')
-    plt.subplot(3, 3, 4)
+    plt.subplot(4, 3, 4)
     plt.plot(list(range(nepochs)), training_log['gen_v_loss'])
     plt.title('Generator validation loss')
-    plt.subplot(3, 3, 5)
+    plt.subplot(4, 3, 5)
     plt.plot(list(range(nepochs)), training_log['dis_v_loss'])
     plt.title('Discriminator validation loss')
-    plt.subplot(3, 3, 6)
+    plt.subplot(4, 3, 6)
     plt.plot(list(range(nepochs)), training_log['gen_v_loss'], list(range(nepochs)), training_log['dis_v_loss'])
     plt.title('Both of them')
-    plt.subplot(3, 3, 7)
-    plt.plot(list(range(nepochs)), training_log['dis_t_acc'])
-    plt.title('Discriminator training accuracy')
-    plt.subplot(3, 3, 8)
-    plt.plot(list(range(nepochs)), training_log['dis_v_acc'])
-    plt.title('Discriminator validation accuracy')
-    plt.subplot(3, 3, 9)
-    plt.plot(list(range(nepochs)), training_log['dis_t_acc'], list(range(nepochs)), training_log['dis_v_acc'])
+    plt.subplot(4, 3, 7)
+    plt.plot(list(range(nepochs)), training_log['ADE_t'])
+    plt.title('Average displacement error in training')
+    plt.subplot(4, 3, 8)
+    plt.plot(list(range(nepochs)), training_log['ADE_v'])
+    plt.title('Average displacement error in validation')
+    plt.subplot(4, 3, 9)
+    plt.plot(list(range(nepochs)), training_log['ADE_t'], list(range(nepochs)), training_log['ADE_v'])
+    plt.title('Both of them')
+    plt.subplot(4, 3, 10)
+    plt.plot(list(range(nepochs)), training_log['FDE_t'])
+    plt.title('Final displacement error in training')
+    plt.subplot(4, 3, 11)
+    plt.plot(list(range(nepochs)), training_log['FDE_v'])
+    plt.title('Final displacement error in validation')
+    plt.subplot(4, 3, 12)
+    plt.plot(list(range(nepochs)), training_log['FDE_t'], list(range(nepochs)), training_log['FDE_v'])
     plt.title('Both of them')
     #plt.show() #Save img instead
     plt.savefig('train_statistics_' + name + '.png')
@@ -189,7 +205,7 @@ def train_gan(nepochs, gen, dis, train_loader, valid_loader, gen_opti, dis_opti,
 def test_gan(gen, dis, test_loader, gen_opti, dis_opti, params, device):
 
     start = time.time()
-    gen_loss, dis_loss, dis_acc = gan_epoch(gen, dis, test_loader, gen_opti, dis_opti, params, device, train_model=False)
-    msj = 'Time {:.3f} sec, gen_loss {:.3f}, dis_loss {:.3f}, dis_acc {:.3f}'
-    print(msj.format(datetime.timedelta(seconds=int(time.time()-start)), gen_loss, dis_loss, dis_acc))
-    return gen_loss, dis_loss, dis_acc
+    gen_loss, dis_loss, ADE_m, FDE_m = gan_epoch(gen, dis, test_loader, gen_opti, dis_opti, params, device, train_model=False)
+    msj = 'Time {} sec, gen_loss {:.3f}, dis_loss {:.3f}, ADE {:.3f}, FDE {:.3f}'
+    print(msj.format(datetime.timedelta(seconds=int(time.time()-start)), gen_loss, dis_loss, ADE_m, FDE_m))
+    return gen_loss, dis_loss, ADE_m, FDE_m

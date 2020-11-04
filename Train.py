@@ -19,7 +19,7 @@ if __name__ == '__main__':
     parser.add_argument('--width', help='image width', default=320, type=int)
     parser.add_argument('--height', help='image height', default=239, type=int)
     parser.add_argument('--enc_layers', help='encoder layers', default=2, type=int)
-    parser.add_argument('--lstm_dim', help='lstm latent dimension', default=128, type=int)
+    parser.add_argument('--lstm_dim', help='lstm latent dimension', default=256, type=int)
     parser.add_argument('--output_dim', help='generator ouptut dimension', default=2, type=int)
     parser.add_argument('--epochs', help='training epochs', default=20, type=int)
     parser.add_argument('--backbone', help='CNN backbone [CNN_own, resnet18]',default='CNN_own', type=str)
@@ -27,7 +27,7 @@ if __name__ == '__main__':
     parser.add_argument('--opti', help='type of optimizator [adam, sgd]', default='adam', type=str)
     parser.add_argument('--genlr',help='generator learning rate', default=1e-3, type=float)
     parser.add_argument('--dislr',help='discriminator rate', default=1e-3, type=float)
-    parser.add_argument('--batch_size', help='batch_size', default=16, type=int)
+    parser.add_argument('--batch_size', help='batch_size', default=32, type=int)
     parser.add_argument('--num_workers', help='workers number', default=1, type=int)
     args = parser.parse_args()
 
@@ -45,7 +45,7 @@ if __name__ == '__main__':
 
     data_transforms = tfs.Compose([tfs.Resize((320, 239)),
                                tfs.ToTensor(),
-                               tfs.Normalize([0.5], [0.5])])
+                               tfs.Normalize([0.5, 0.5, 0.5, 0.5], [0.5, 0.5, 0.5, 0.5])])
 
     train_set = RobotDataset('train', 
                             args.latent_dim, 
@@ -97,7 +97,8 @@ if __name__ == '__main__':
 
     log['testg_loss'] = mini_log[0]
     log['testd_loss'] = mini_log[1]
-    log['testd_acc'] = mini_log[2]
+    log['testd_ADE'] = mini_log[2]
+    log['testd_FDE'] = mini_log[3]
 
     import json 
     with open('Training_log_' + args.name + '.txt', 'w') as json_file:
