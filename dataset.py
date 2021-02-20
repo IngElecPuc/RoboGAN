@@ -6,6 +6,7 @@ import os
 import numpy as np 
 from PIL import Image
 import csv
+from math import sqrt, acos, asin, pi
 
 class RobotDataset(Dataset):
     def __init__(self, path, latent_dim, sequence_length, transforms):
@@ -47,6 +48,7 @@ class RobotDataset(Dataset):
             sec_tensor = torch.cat((sec_tensor, next_frame))
 
         trajectory = []
+        velocity = []
         target = []
         header = True
         curr_row = 0
@@ -60,16 +62,26 @@ class RobotDataset(Dataset):
                 curr_row += 1
                 x = float(row[0]) #Cambiar a sistema en polares
                 y = float(row[1])
-                rho = float(row[6])
-                theta = float(row[7])
-                trajectory.append([x, y])
-                target.append([rho, theta])
+                rho = sqrt(x * x + y * y)
+                #theta = acos(x/rho) - pi/2 #Polar angle of robot
+                ang = (float(row[4]) - 180) * pi/180 #Orientation of robot
+                vx = float(row[2]) #Cambiar a sistema en polares
+                vy = float(row[3])
+                vrho = sqrt(vx * vx + vy * vy)
+                vang = float(row[5]) * pi/180
+                rho_target = float(row[6])
+                theta_target = float(row[7])
+                trajectory.append([x, y, ang])
+                velocity.append([vx, vy, vang])
+                target.append([rho_target, theta_target])
 
             for i in range(curr_row, self.sequence_length): #Zero padding to fit sequence length
-                trajectory.append([0.0, 0.0])
+                trajectory.append([0.0, 0.0, 0.0])
+                velocity.append([0.0, 0.0, 0.0])
                 target.append([0.0, 0.0])
 
         trajectory = torch.tensor(np.array(trajectory, dtype=np.float32))
+        velocity = torch.tensor(np.array(velocity, dtype=np.float32))
         target = torch.tensor(np.array(target, dtype=np.float32))
 
         # noise = self.noise[idx].view(1, -1).clone()
@@ -82,6 +94,7 @@ class RobotDataset(Dataset):
             'noise' : noise,
             'imgs' : sec_tensor, 
             'trajectory' : trajectory,
+            'velocity' : velocity,
             'target' : target
         }
 

@@ -54,12 +54,30 @@ class Generator(nn.Module):
         self.LinearI  =   nn.Sequential(nn.Linear(params['afterconv'], 2*params['latent_dim']), 
                                   nn.BatchNorm1d(2*params['latent_dim']), 
                                   nn.ReLU())
-        self.LinearT  =   nn.Sequential(nn.Linear(2, params['latent_dim']), 
+        self.LinearT  =   nn.Sequential(nn.Linear(3, 1024),
+                                  nn.BatchNorm1d(1024), 
+                                  nn.ReLU(),
+                                  nn.Dropout(0.25),
+                                  nn.Linear(1024,  1024), 
+                                  nn.BatchNorm1d(1024), 
+                                  nn.ReLU(),                                                 
+                                  nn.Dropout(0.25),                                                  
+                                  nn.Linear(1024,  params['latent_dim']), 
                                   nn.BatchNorm1d(params['latent_dim']), 
-                                  nn.ReLU())
-        self.LinearZ  =   nn.Sequential(nn.Linear(params['latent_dim'], params['latent_dim']), 
+                                  nn.ReLU(),                                                 
+                                  nn.Dropout(0.25))
+        self.LinearZ  =   nn.Sequential(nn.Linear(params['latent_dim'], 1024),
+                                  nn.BatchNorm1d(1024), 
+                                  nn.ReLU(),
+                                  nn.Dropout(0.25),
+                                  nn.Linear(1024,  1024), 
+                                  nn.BatchNorm1d(1024), 
+                                  nn.ReLU(),                                                 
+                                  nn.Dropout(0.25),                                                  
+                                  nn.Linear(1024,  params['latent_dim']), 
                                   nn.BatchNorm1d(params['latent_dim']), 
-                                  nn.ReLU())
+                                  nn.ReLU(),                                                 
+                                  nn.Dropout(0.25))
         self.LinearO  =   nn.Sequential(nn.Linear(2, params['latent_dim']), 
                                   nn.BatchNorm1d(params['latent_dim']), 
                                   nn.ReLU())
@@ -73,7 +91,7 @@ class Generator(nn.Module):
         typeattention = True if params['attention'] == 'add' else False
         self.Attention =  AttetionLayer(params['lstm_dim'], params['lstm_dim'], additive=typeattention)
         self.Decoder   =  nn.LSTMCell(params['lstm_dim'], params['lstm_dim'], bias=True)
-        self.LinearOut =  nn.Sequential(nn.Linear(params['lstm_dim'] + params['output_dim'], 2), 
+        self.LinearOut =  nn.Sequential(nn.Linear(params['lstm_dim'] + params['output_dim'], 3), 
                                   nn.Tanh())
 
     def forward(self, imgs, z, past_traj, target):
@@ -90,7 +108,7 @@ class Generator(nn.Module):
         x = x.reshape(-1, c*w*h)
         
         x = self.LinearI(x)        
-        t = self.LinearT(past_traj.reshape(-1, 2))
+        t = self.LinearT(past_traj.reshape(-1, 3))
         x = torch.cat((x.reshape(b, s, -1), t.reshape(b, s, -1)), 2)
         z = self.LinearZ(z.reshape(-1, self.p['latent_dim']))
         x = torch.cat((x, z.reshape(b, s, -1)), 2)

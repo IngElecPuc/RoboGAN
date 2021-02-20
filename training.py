@@ -15,6 +15,7 @@ def trimm(batch, sequence_length, past_length, future_length, stride, trim_mode=
         'imgs' : [], 
         'past_traj' : [],
         'future_traj' : [],
+        'velocity' : [],
         'target' : []
     }
 
@@ -23,28 +24,29 @@ def trimm(batch, sequence_length, past_length, future_length, stride, trim_mode=
 
     for i in range(num_cuts): #cuting chunks for prediction in a limited window
         #historical cuts
-        trimmed['noise'].append(batch['noise'].narrow(1, i * jump, past_length))
-        trimmed['imgs'].append(batch['imgs'].narrow(1, i * jump, past_length))
-        trimmed['past_traj'].append(batch['trajectory'].narrow(1, i * jump, past_length))
+        trimmed['noise'].append(batch['noise'].narrow(1, i * jump, past_length).clone())
+        trimmed['imgs'].append(batch['imgs'].narrow(1, i * jump, past_length).clone())
+        trimmed['past_traj'].append(batch['trajectory'].narrow(1, i * jump, past_length).clone())
         #future cuts
-        trimmed['future_traj'].append(batch['trajectory'].narrow(1, i * jump + past_length, future_length))
-        trimmed['target'].append(batch['target'].narrow(1, i * jump + past_length, future_length))
+        trimmed['future_traj'].append(batch['trajectory'].narrow(1, i * jump + past_length, future_length).clone())
+        trimmed['velocity'].append(batch['velocity'].narrow(1, i * jump + past_length, future_length).clone())
+        trimmed['target'].append(batch['target'].narrow(1, i * jump + past_length, future_length).clone())
 
     if trim_mode == 'relative':
         #Translating each chunk to current robot's position
-        for (past, futu) in zip(trimmed['past_traj'], trimmed['future_traj']):
-            traj = past.permute(2, 1, 0).clone()
-            xn = traj[0][-1] #last x coordinate of all the batch
-            yn = traj[1][-1]
-            traj[0] = traj[0] - xn #Moving to the origin
-            traj[1] = traj[1] - yn 
-            trimmed['past_traj'][i] = traj.permute(2, 1, 0)
-            traj = futu.permute(2, 1, 0).clone()
-            x0 = traj[0][0] #first x coordinate of all the batch
-            y0 = traj[1][0]
-            traj[0] = traj[0] - x0 #Moving to the origin
-            traj[1] = traj[1] - y0 
-            trimmed['future_traj'][i] = traj.permute(2, 1, 0)
+        for (i, (past, futu)) in enumerate(zip(trimmed['past_traj'], trimmed['future_traj'])):
+            past = past.permute(2, 1, 0)
+            xn = past[0][-1] #last x coordinate of all the batch
+            yn = past[1][-1]
+            past[0] = past[0] - xn #Moving to the origin
+            past[1] = past[1] - yn 
+            trimmed['past_traj'][i] = past.permute(2, 1, 0)
+            futu = futu.permute(2, 1, 0)
+            x0 = futu[0][0] #first x coordinate of all the batch
+            y0 = futu[1][0]
+            futu[0] = futu[0] - x0 #Moving to the origin
+            futu[1] = futu[1] - y0 
+            trimmed['future_traj'][i] = futu.permute(2, 1, 0)
             #We dont do this to the target because it it supposed to be calculated from current position from the simulator 
     
     return trimmed
@@ -78,9 +80,10 @@ def gan_epoch(gen, dis, loader, gen_opti, dis_opti, params, device, train_model=
 
         for i in range(steps): 
             imgs = trimmed['imgs'][i].to(device)
+            z = trimmed['noise'][i].to(device)
             past_routes = trimmed['past_traj'][i].to(device)
             real_routes = trimmed['future_traj'][i].to(device)
-            z = trimmed['noise'][i].to(device)
+            velocities = trimmed['velocity'][i].to(device)
             objective = trimmed['target'][i].to(device)
 
             if imgs.shape[0] == 1: #Bug at some times
@@ -94,7 +97,7 @@ def gan_epoch(gen, dis, loader, gen_opti, dis_opti, params, device, train_model=
             ADE_mean += ADE(real_routes, fake_routes)/steps
             FDE_mean += FDE(real_routes, fake_routes)/steps
 
-            dis_loss = discriminator_loss(real_output, fake_output)
+            dis_loss = discriminator_loss(real_output, fake_output, params)
             dis_opti.zero_grad()
             if (train_model):
                 dis_loss.backward(retain_graph=True)
@@ -102,7 +105,7 @@ def gan_epoch(gen, dis, loader, gen_opti, dis_opti, params, device, train_model=
             dis_mean_loss += dis_loss.item()/steps
 
             fake_output = dis(imgs, fake_routes, past_routes, objective) #Check if this step is really necessary
-            gen_loss = generator_loss(fake_output)
+            gen_loss = generator_loss(fake_output, fake_routes, real_routes, params)
             gen_opti.zero_grad()
             if (train_model):
                 gen_loss.backward(retain_graph=True)

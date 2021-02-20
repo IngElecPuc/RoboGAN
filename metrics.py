@@ -2,8 +2,8 @@ import torch
 import numpy as np 
 
 def ADE(t_true, t_pred, batch_mean=True):
-    t_true = t_true.permute(2, 1, 0).clone()
-    t_pred = t_pred.permute(2, 1, 0).clone()
+    t_true = t_true.permute(2, 1, 0)[:2].clone()
+    t_pred = t_pred.permute(2, 1, 0)[:2].clone()
 
     xn_true = t_true[0]
     xn_pred = t_pred[0]
@@ -22,8 +22,8 @@ def ADE(t_true, t_pred, batch_mean=True):
     return FDE_result
 
 def FDE(t_true, t_pred, batch_mean=True):
-    t_true = t_true.permute(2, 1, 0).clone()
-    t_pred = t_pred.permute(2, 1, 0).clone()
+    t_true = t_true.permute(2, 1, 0)[:2].clone()
+    t_pred = t_pred.permute(2, 1, 0)[:2].clone()
 
     xn_true = t_true[0][-1]
     xn_pred = t_pred[0][-1]

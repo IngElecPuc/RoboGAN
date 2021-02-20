@@ -25,8 +25,12 @@ if __name__ == '__main__':
     parser.add_argument('--backbone', help='CNN backbone [CNN_own, resnet18]',default='CNN_own', type=str)
     parser.add_argument('--attention', help='type of attention [add, mult]', default='add', type=str)
     parser.add_argument('--opti', help='type of optimizator [adam, sgd]', default='adam', type=str)
-    parser.add_argument('--genlr',help='generator learning rate', default=1e-3, type=float)
-    parser.add_argument('--dislr',help='discriminator rate', default=1e-3, type=float)
+    parser.add_argument('--genlr', help='generator learning rate', default=1e-3, type=float)
+    parser.add_argument('--dislr', help='discriminator rate', default=1e-3, type=float)
+    parser.add_argument('--up', help='up adversarial criterion', default=1.0, type=float)
+    parser.add_argument('--down', help='down adversarial criterion', default=0.0, type=float)
+    parser.add_argument('--alpha', help='generator loss final point weight', default=0.15, type=float)
+    parser.add_argument('--beta', help='generator loss velocity weight', default=0.15, type=float)
     parser.add_argument('--batch_size', help='batch_size', default=32, type=int)
     parser.add_argument('--num_workers', help='workers number', default=1, type=int)
     args = parser.parse_args()
@@ -41,6 +45,10 @@ if __name__ == '__main__':
                             enc_layers=args.enc_layers,
                             lstm_dim=args.lstm_dim,
                             output_dim=args.output_dim,
+                            up_criterion=args.up,
+                            down_criterion=args.down,
+                            alpha=args.alpha,
+                            beta=args.beta,
                             attention=args.attention)                            
 
     data_transforms = tfs.Compose([tfs.Resize((320, 239)),

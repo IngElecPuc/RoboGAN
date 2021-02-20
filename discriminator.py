@@ -60,11 +60,26 @@ class Discriminator(nn.Module):
                                   nn.BatchNorm1d(2*params['latent_dim']), 
                                   nn.LeakyReLU(negative_slope=0.2),
                                   nn.Dropout(0.25))
-        self.LinearT  =   nn.Sequential(nn.Linear(2, params['latent_dim']), 
-                                  nn.BatchNorm1d(params['latent_dim']), 
+        self.LinearT  =   nn.Sequential(nn.Linear(3, 1024),
+                                  nn.BatchNorm1d(1024), 
                                   nn.LeakyReLU(negative_slope=0.2),
-                                  nn.Dropout(0.25))
-        self.LinearP  =   nn.Sequential(nn.Linear(2, params['latent_dim']), 
+                                  nn.Dropout(0.25),
+                                  nn.Linear(1024,  1024), 
+                                  nn.BatchNorm1d(1024), 
+                                  nn.LeakyReLU(negative_slope=0.2),
+                                  nn.Dropout(0.25),                                                  
+                                  nn.Linear(1024,  params['latent_dim']), 
+                                  nn.BatchNorm1d(params['latent_dim']), 
+                                  nn.LeakyReLU(negative_slope=0.2))
+        self.LinearP  =   nn.Sequential(nn.Linear(3, 1024),
+                                  nn.BatchNorm1d(1024), 
+                                  nn.LeakyReLU(negative_slope=0.2),
+                                  nn.Dropout(0.25),
+                                  nn.Linear(1024,  1024), 
+                                  nn.BatchNorm1d(1024), 
+                                  nn.LeakyReLU(negative_slope=0.2),
+                                  nn.Dropout(0.25),                                                  
+                                  nn.Linear(1024,  params['latent_dim']), 
                                   nn.BatchNorm1d(params['latent_dim']), 
                                   nn.LeakyReLU(negative_slope=0.2),
                                   nn.Dropout(0.25))
@@ -72,11 +87,11 @@ class Discriminator(nn.Module):
                                   nn.BatchNorm1d(params['latent_dim']), 
                                   nn.LeakyReLU(negative_slope=0.2),
                                   nn.Dropout(0.25))
-        # self.DownTime =   nn.Conv1d(2, 2, 5)
-        self.DownTime =   nn.Sequential(nn.Conv1d(2, 2, 5), 
-                                  nn.BatchNorm1d(2), 
-                                  nn.LeakyReLU(negative_slope=0.2))        
 
+        self.DownTime =   nn.Sequential(nn.Conv1d(params['latent_dim'], params['latent_dim'], 5), 
+                                  nn.BatchNorm1d(params['latent_dim']), 
+                                  nn.LeakyReLU(negative_slope=0.2))
+        
         #Endocer/Decoder + final Linear
         self.Encoder  =   nn.LSTM(4*params['latent_dim'], 
                           params['lstm_dim'], 
@@ -109,12 +124,12 @@ class Discriminator(nn.Module):
         x = x.reshape(-1, c*w*h)
         
         x = self.LinearI(x)        
-        t = self.LinearT(past_traj.reshape(-1, 2))
+        t = self.LinearT(past_traj.reshape(-1, 3))
         x = torch.cat((x.reshape(b, s, -1), t.reshape(b, s, -1)), 2)
-        p = self.DownTime(prediction.permute(0, 2, 1))
-        p = p.permute(0, 2, 1)
-        p = self.LinearP(p.reshape(-1, 2))
-        x = torch.cat((x, p.reshape(b, s, -1)), 2)
+        p = self.LinearP(prediction.reshape(-1, 3))
+        p = p.reshape(b, -1, self.p['latent_dim'])
+        p = self.DownTime(p.permute(0, 2, 1))
+        x = torch.cat((x, p.permute(0, 2, 1)), 2)
         
         h0_enc = torch.zeros((self.p['enc_layers'], b, self.p['lstm_dim'])).to(self.device)
         c0_enc = torch.zeros((self.p['enc_layers'], b, self.p['lstm_dim'])).to(self.device) 

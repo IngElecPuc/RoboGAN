@@ -40,6 +40,10 @@ def hyperparameters(w=320,
                     enc_layers=2,
                     lstm_dim=128,
                     output_dim=2,
+                    up_criterion=1.0,
+                    down_criterion=0.0,
+                    alpha=0.15,
+                    beta=0.15,
                     attention='add'):
 
     w1, h1 = (w+1)/3, (h+1)/3
@@ -49,15 +53,42 @@ def hyperparameters(w=320,
     w5, h5 = w4-1, h4-1
 
     onadict = {
-        'latent_dim' : latent_dim,
-        'seq_len'    : seq_len,
-        'history'    : history_length,
-        'predict_seq': future_length,
-        'afterconv'  : int(512*w5*h5),
-        'enc_layers' : enc_layers,
-        'lstm_dim'   : lstm_dim,
-        'output_dim' : output_dim,
-        'attention'  : attention
+        'latent_dim'     : latent_dim,
+        'seq_len'        : seq_len,
+        'history'        : history_length,
+        'predict_seq'    : future_length,
+        'afterconv'      : int(512*w5*h5),
+        'enc_layers'     : enc_layers,
+        'lstm_dim'       : lstm_dim,
+        'output_dim'     : output_dim,
+        'up_criterion'   : up_criterion,
+        'down_criterion' : down_criterion, 
+        'alpha'          : alpha,
+        'beta'           : beta, 
+        'attention'      : attention
+
     }
 
     return onadict
+
+class AddGaussianNoise(object):
+    def __init__(self, mean=0., std=1.):
+        self.std = std
+        self.mean = mean
+        
+    def __call__(self, tensor):
+        return tensor + torch.randn(tensor.size()) * self.std + self.mean
+    
+    def __repr__(self):
+        return self.__class__.__name__ + '(mean={0}, std={1})'.format(self.mean, self.std)
+
+class AddUniformNoise(object):
+    def __init__(self, mean=0., std=1.):
+        self.std = std
+        self.mean = mean
+        
+    def __call__(self, tensor):
+        return tensor + torch.rand(tensor.size()) * self.std + self.mean
+    
+    def __repr__(self):
+        return self.__class__.__name__ + '(mean={0}, std={1})'.format(self.mean, self.std)
