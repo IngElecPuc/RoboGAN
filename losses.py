@@ -7,7 +7,7 @@ def discriminator_loss(real_output, fake_output, params):
     return real_loss + fake_loss
 
 def generator_loss(fake_output, fake_routes, real_routes, params):
-    gen_adver = F.binary_cross_entropy(fake_output, params['up_criterion'] * ones_like(fake_output))
+    gen_adver = F.binary_cross_entropy(fake_output, ones_like(fake_output))
     gen_final = target_loss(fake_routes, real_routes)
     gen_veloc = velocity_regulator_loss(fake_routes, real_routes, params)
     return gen_adver * (1 - params['alpha'] - params['beta']) + gen_final * params['alpha'] + gen_veloc * params['beta']

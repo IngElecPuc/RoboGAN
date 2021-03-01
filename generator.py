@@ -16,7 +16,8 @@ class Generator(nn.Module):
                           stride=3, 
                           padding=1),
                 nn.BatchNorm2d(32, momentum=0.15),
-                nn.ReLU())
+                #nn.ReLU())
+                nn.LeakyReLU(negative_slope=0.2))
         self.Conv2D2 = nn.Sequential(
                 nn.Conv2d(in_channels=32, 
                           out_channels=64, 
@@ -24,7 +25,8 @@ class Generator(nn.Module):
                           stride=3, 
                           padding=1),
                 nn.BatchNorm2d(64, momentum=0.15),
-                nn.ReLU())
+                #nn.ReLU())
+                nn.LeakyReLU(negative_slope=0.2))
         self.Conv2D3 = nn.Sequential(
                 nn.Conv2d(in_channels=64, 
                           out_channels=128, 
@@ -32,7 +34,8 @@ class Generator(nn.Module):
                           stride=3, 
                           padding=0),
                 nn.BatchNorm2d(128, momentum=0.15),
-                nn.ReLU())
+                #nn.ReLU())
+                nn.LeakyReLU(negative_slope=0.2))
         self.Conv2D4 = nn.Sequential(
                 nn.Conv2d(in_channels=128, 
                           out_channels=256, 
@@ -40,7 +43,8 @@ class Generator(nn.Module):
                           stride=3, 
                           padding=0),
                 nn.BatchNorm2d(256, momentum=0.15),
-                nn.ReLU())
+                #nn.ReLU())
+                nn.LeakyReLU(negative_slope=0.2))
         self.Conv2D5 = nn.Sequential(
                 nn.Conv2d(in_channels=256, 
                           out_channels=512, 
@@ -48,39 +52,48 @@ class Generator(nn.Module):
                           stride=1, 
                           padding=0),
                 nn.BatchNorm2d(512, momentum=0.15),
-                nn.ReLU())
+                #nn.ReLU())
+                nn.LeakyReLU(negative_slope=0.2))
 
         #Linear layers    
         self.LinearI  =   nn.Sequential(nn.Linear(params['afterconv'], 2*params['latent_dim']), 
                                   nn.BatchNorm1d(2*params['latent_dim']), 
-                                  nn.ReLU())
+                                  #nn.ReLU())
+                                  nn.LeakyReLU(negative_slope=0.2))
         self.LinearT  =   nn.Sequential(nn.Linear(3, 1024),
                                   nn.BatchNorm1d(1024), 
-                                  nn.ReLU(),
+                                  #nn.ReLU(),
+                                  nn.LeakyReLU(negative_slope=0.2),
                                   nn.Dropout(0.25),
                                   nn.Linear(1024,  1024), 
                                   nn.BatchNorm1d(1024), 
-                                  nn.ReLU(),                                                 
+                                  #nn.ReLU(),            
+                                  nn.LeakyReLU(negative_slope=0.2),                                     
                                   nn.Dropout(0.25),                                                  
                                   nn.Linear(1024,  params['latent_dim']), 
                                   nn.BatchNorm1d(params['latent_dim']), 
-                                  nn.ReLU(),                                                 
+                                  #nn.ReLU(),                                                 
+                                  nn.LeakyReLU(negative_slope=0.2),
                                   nn.Dropout(0.25))
         self.LinearZ  =   nn.Sequential(nn.Linear(params['latent_dim'], 1024),
                                   nn.BatchNorm1d(1024), 
-                                  nn.ReLU(),
+                                  #nn.ReLU(),
+                                  nn.LeakyReLU(negative_slope=0.2),
                                   nn.Dropout(0.25),
                                   nn.Linear(1024,  1024), 
                                   nn.BatchNorm1d(1024), 
-                                  nn.ReLU(),                                                 
+                                  #nn.ReLU(),                       
+                                  nn.LeakyReLU(negative_slope=0.2),                          
                                   nn.Dropout(0.25),                                                  
                                   nn.Linear(1024,  params['latent_dim']), 
                                   nn.BatchNorm1d(params['latent_dim']), 
-                                  nn.ReLU(),                                                 
+                                  #nn.ReLU(),      
+                                  nn.LeakyReLU(negative_slope=0.2),                                           
                                   nn.Dropout(0.25))
         self.LinearO  =   nn.Sequential(nn.Linear(2, params['latent_dim']), 
                                   nn.BatchNorm1d(params['latent_dim']), 
-                                  nn.ReLU())
+                                  #nn.ReLU())
+                                  nn.LeakyReLU(negative_slope=0.2))
 
         #Endocer/Decoder + final Linear
         self.Encoder  =   nn.LSTM(4*params['latent_dim'], 

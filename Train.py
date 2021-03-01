@@ -13,7 +13,7 @@ import numpy as np
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='for training')
     parser.add_argument('--name', help='Sesion name', default='simple', type=str)
-    parser.add_argument('--latent_dim', help='Z latent dimension', default=128, type=int)
+    parser.add_argument('--latent_dim', help='Z latent dimension', default=512, type=int)
     parser.add_argument('--history_length', help='history window', default=8, type=int)
     parser.add_argument('--future_length', help='prediction steps', default=12, type=int)
     parser.add_argument('--width', help='image width', default=320, type=int)
@@ -24,10 +24,11 @@ if __name__ == '__main__':
     parser.add_argument('--epochs', help='training epochs', default=20, type=int)
     parser.add_argument('--backbone', help='CNN backbone [CNN_own, resnet18]',default='CNN_own', type=str)
     parser.add_argument('--attention', help='type of attention [add, mult]', default='add', type=str)
-    parser.add_argument('--opti', help='type of optimizator [adam, sgd]', default='adam', type=str)
+    parser.add_argument('--gopti', help='type of optimizator for generator [adam, sgd]', default='adam', type=str)
+    parser.add_argument('--dopti', help='type of optimizator for discriminator [adam, sgd]', default='sgd', type=str)
     parser.add_argument('--genlr', help='generator learning rate', default=1e-3, type=float)
     parser.add_argument('--dislr', help='discriminator rate', default=1e-3, type=float)
-    parser.add_argument('--up', help='up adversarial criterion', default=1.0, type=float)
+    parser.add_argument('--up', help='up adversarial criterion', default=0.9, type=float)
     parser.add_argument('--down', help='down adversarial criterion', default=0.0, type=float)
     parser.add_argument('--alpha', help='generator loss final point weight', default=0.15, type=float)
     parser.add_argument('--beta', help='generator loss velocity weight', default=0.15, type=float)
@@ -37,7 +38,7 @@ if __name__ == '__main__':
 
     seq_len = max([dataset_explore('train'), dataset_explore('valid'), dataset_explore('test')]) #Max sequence length in the data set
 
-    nethparams = hyperparameters(w=args.width, 
+    netparams = hyperparameters(w=args.width, 
                             h=args.height, 
                             latent_dim=args.latent_dim, 
                             history_length=args.history_length, 
@@ -74,14 +75,17 @@ if __name__ == '__main__':
 
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-    gen = Generator(nethparams, device).to(device)
-    dis = Discriminator(nethparams, device).to(device)
+    gen = Generator(netparams, device).to(device)
+    dis = Discriminator(netparams, device).to(device)
 
-    if args.opti == 'adam':
+    if args.gopti == 'adam':
         gen_opti = torch.optim.Adam(gen.parameters(), lr=args.genlr)
-        dis_opti = torch.optim.Adam(dis.parameters(), lr=args.dislr)
     else:
         gen_opti = torch.optim.SGD(gen.parameters(), lr=args.genlr)
+
+    if args.dopti == 'adam':
+        dis_opti = torch.optim.Adam(dis.parameters(), lr=args.dislr)
+    else:
         dis_opti = torch.optim.SGD(dis.parameters(), lr=args.dislr)
 
     log = train_gan(args.epochs, 

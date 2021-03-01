@@ -15,7 +15,7 @@ class Discriminator(nn.Module):
                           kernel_size=3, 
                           stride=3, 
                           padding=1),
-                nn.BatchNorm2d(32, momentum=0.15),
+                #nn.BatchNorm2d(32, momentum=0.15),
                 nn.LeakyReLU(negative_slope=0.2),
                 nn.Dropout(0.25))
         self.Conv2D2 = nn.Sequential(
@@ -57,11 +57,11 @@ class Discriminator(nn.Module):
 
         #Linear layers    
         self.LinearI  =   nn.Sequential(nn.Linear(params['afterconv'], 2*params['latent_dim']), 
-                                  nn.BatchNorm1d(2*params['latent_dim']), 
+                                  #nn.BatchNorm1d(2*params['latent_dim']), 
                                   nn.LeakyReLU(negative_slope=0.2),
                                   nn.Dropout(0.25))
         self.LinearT  =   nn.Sequential(nn.Linear(3, 1024),
-                                  nn.BatchNorm1d(1024), 
+                                  #nn.BatchNorm1d(1024), 
                                   nn.LeakyReLU(negative_slope=0.2),
                                   nn.Dropout(0.25),
                                   nn.Linear(1024,  1024), 
@@ -72,7 +72,7 @@ class Discriminator(nn.Module):
                                   nn.BatchNorm1d(params['latent_dim']), 
                                   nn.LeakyReLU(negative_slope=0.2))
         self.LinearP  =   nn.Sequential(nn.Linear(3, 1024),
-                                  nn.BatchNorm1d(1024), 
+                                  #nn.BatchNorm1d(1024), 
                                   nn.LeakyReLU(negative_slope=0.2),
                                   nn.Dropout(0.25),
                                   nn.Linear(1024,  1024), 
@@ -89,7 +89,7 @@ class Discriminator(nn.Module):
                                   nn.Dropout(0.25))
 
         self.DownTime =   nn.Sequential(nn.Conv1d(params['latent_dim'], params['latent_dim'], 5), 
-                                  nn.BatchNorm1d(params['latent_dim']), 
+                                  #nn.BatchNorm1d(params['latent_dim']), 
                                   nn.LeakyReLU(negative_slope=0.2))
         
         #Endocer/Decoder + final Linear
