@@ -16,13 +16,14 @@ def trimm(batch, sequence_length, past_length, future_length, stride, trim_mode=
         'past_traj' : [],
         'future_traj' : [],
         'velocity' : [],
-        'target' : []
+        'target' : [],
+        'trim_mode' : trim_mode
     }
 
-    num_cuts = int((sequence_length - past_length - future_length) / (past_length - stride))
+    chunks = int((sequence_length - past_length - future_length) / (past_length - stride)) + 1
     jump = past_length - stride
 
-    for i in range(num_cuts): #cuting chunks for prediction in a limited window
+    for i in range(chunks): #cuting chunks for prediction in a limited window
         #historical cuts
         trimmed['noise'].append(batch['noise'].narrow(1, i * jump, past_length).clone())
         trimmed['imgs'].append(batch['imgs'].narrow(1, i * jump, past_length).clone())
@@ -51,7 +52,34 @@ def trimm(batch, sequence_length, past_length, future_length, stride, trim_mode=
     
     return trimmed
 
+def reconstruct(trimmed, sequence_length, past_length, stride):
+    #This function will try to reconstruct a trimmed sequence
+    trajectory = torch.zeros((1, 1, 1))
 
+    for (i, chunk) in enumerate(trimmed['past_traj']):
+        chunk = chunk.permute(2, 1, 0)
+        if trimmed['trim_mode'] == 'relative':
+            if i == 0:
+                x0 = chunk[0][0]
+                y0 = chunk[1][0]
+            else: #Corregir aquí según corresponda
+                x0 += chunk[0][0]
+                y0 += chunk[1][0]
+            chunk[0] = chunk[0] - x0
+            chunk[1] = chunk[1] - y0   
+        #chunk = chunk.narrow(1, 0, past_length - stride)
+        chunk = chunk.narrow(1, 0, past_length - 1)
+
+        if i == 0:
+            trajectory = chunk.clone()
+        else:
+            trajectory = torch.cat((trajectory, chunk.clone()),  axis=1)
+
+    chunk = trimmed['future_traj'][-1].permute(2, 1, 0)
+    trajectory = torch.cat((trajectory, chunk.clone()), axis=1)            
+    
+    return trajectory.permute(2, 1, 0)
+        
 def gan_epoch(gen, dis, loader, gen_opti, dis_opti, params, device, train_model=True):
 
     if (train_model):
@@ -67,7 +95,7 @@ def gan_epoch(gen, dis, loader, gen_opti, dis_opti, params, device, train_model=
     ADE_mean = 0
     FDE_mean = 0
 
-    for batch in loader: #Adjust window of the seq to this method
+    for (num_batch, batch) in enumerate(loader): #Adjust window of the seq to this method
        
         trimmed = trimm(batch, 
                         params['seq_len'], 
@@ -111,6 +139,9 @@ def gan_epoch(gen, dis, loader, gen_opti, dis_opti, params, device, train_model=
                 gen_loss.backward(retain_graph=True)
                 gen_opti.step()
             gen_mean_loss += gen_loss.item()/steps
+        
+        if not train_model:
+            print('{:.2f} percent of current epoch'.format((num_batch+1)*loader.batch_size/len(loader.dataset)*100))
 
     gen_mean_loss /= len(loader.dataset)
     dis_mean_loss /= len(loader.dataset)

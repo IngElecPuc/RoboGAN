@@ -103,6 +103,49 @@ class RobotDataset(Dataset):
     def __len__(self):
         return len(self.trajpaths)
 
+class OnlineProcessing(Dataset):
+    def __init__(self, imgs, routes, objs, history, prediction, latent_dim, transforms):
+        self.imgs = imgs
+        self.routes = routes
+        self.objs = objs
+        self.history = history
+        self.prediction = prediction
+        self.transforms = transforms
+        self.noise = torch.randn((history, latent_dim))
+
+    def __getitem__(self, idx):
+  
+        for i, img in enumerate(self.imgs):
+            if (i == 0):
+                sec_tensor = self.transforms(img)
+                c, w, h = sec_tensor.shape
+                sec_tensor = sec_tensor.view(1, c, w, h)
+            else:
+                next_frame = self.transforms(img)
+                next_frame = next_frame.view(1, c, w, h)
+                sec_tensor = torch.cat((sec_tensor, next_frame))
+
+        routes_tensor = torch.tensor(self.routes)
+        objs_tensor = torch.tensor(self.objs)
+        #generator needs last 4 digits of prediction, but only for the entrance. The information is descarted.
+        objs_tensor = torch.cat((objs_tensor, torch.zeros((self.prediction - self.history, 2))))
+        noise_tensor = self.noise
+        
+        return sec_tensor, noise_tensor, routes_tensor, objs_tensor
+    
+    def __len__(self):
+        return 1
+    
+def get_relative(torelative):
+    torelative = torelative.permute(2, 1, 0)
+    xn = torelative[0][-1] #last x coordinate of all the batch
+    yn = torelative[1][-1]
+    torelative[0] = torelative[0] - xn #Moving to the origin
+    torelative[1] = torelative[1] - yn 
+    relative = torelative.permute(2, 1, 0)
+
+    return relative
+
 def dataset_explore(path):
     scenes = os.listdir(path)
     longest = 0
