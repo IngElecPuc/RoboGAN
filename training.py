@@ -161,6 +161,7 @@ def train_gan(nepochs, gen, dis, train_loader, valid_loader, gen_opti, dis_opti,
     training_log['dis_v_loss'] = []
     training_log['ADE_v'] = []
     training_log['FDE_v'] = []
+    print('Starting training')
 
     for epoch in range(nepochs):
     
@@ -177,8 +178,8 @@ def train_gan(nepochs, gen, dis, train_loader, valid_loader, gen_opti, dis_opti,
         training_log['ADE_v'].append(ADE_v)
         training_log['FDE_v'].append(FDE_v)
 
-        msj = 'Epoch {:03d}: time {} sec, gen_t_loss {:.3f}, dis_t_loss {:.3f}, ADE_t {:.3f}, FDE_t {:.3f}, gen_v_loss {:.3f}, dis_v_loss {:.3f}, ADE_v {:.3f}, FDE_v {:.3f}\n'
-        msj.format(epoch+1, 
+        msg = 'Epoch {:03d}: time {} sec, gen_t_loss {:.3f}, dis_t_loss {:.3f}, ADE_t {:.3f}, FDE_t {:.3f}, gen_v_loss {:.3f}, dis_v_loss {:.3f}, ADE_v {:.3f}, FDE_v {:.3f}\n'
+        msg.format(epoch+1, 
                     datetime.timedelta(seconds=int(time.time()-start)),
                     gen_t_loss, 
                     dis_t_loss, 
@@ -188,9 +189,10 @@ def train_gan(nepochs, gen, dis, train_loader, valid_loader, gen_opti, dis_opti,
                     dis_v_loss, 
                     ADE_v,
                     FDE_v)
+        print(msg)        
 
-        with open('train_progress.txt', 'w') as json_file:
-            json.dump(msj, json_file)
+        with open('train_progress' + name + '.txt', 'w') as json_file:
+            json.dump(msg, json_file)
 
         torch.save(gen.state_dict(), './gen.pth')
         torch.save(dis.state_dict(), './dis.pth')
@@ -240,6 +242,7 @@ def test_gan(gen, dis, test_loader, gen_opti, dis_opti, params, device):
 
     start = time.time()
     gen_loss, dis_loss, ADE_m, FDE_m = gan_epoch(gen, dis, test_loader, gen_opti, dis_opti, params, device, train_model=False)
-    msj = 'Time {} sec, gen_loss {:.3f}, dis_loss {:.3f}, ADE {:.3f}, FDE {:.3f}'
-    print(msj.format(datetime.timedelta(seconds=int(time.time()-start)), gen_loss, dis_loss, ADE_m, FDE_m))
+    print('Starting testing')
+    msg = 'Time {} sec, gen_loss {:.3f}, dis_loss {:.3f}, ADE {:.3f}, FDE {:.3f}'
+    print(msg.format(datetime.timedelta(seconds=int(time.time()-start)), gen_loss, dis_loss, ADE_m, FDE_m))
     return gen_loss, dis_loss, ADE_m, FDE_m
