@@ -11,47 +11,47 @@ class Generator(nn.Module):
         #Conv layers
         self.Conv2D1 = nn.Sequential(
                 nn.Conv2d(in_channels=4, 
-                          out_channels=32, 
+                          out_channels=params['cnn_filters'][0], 
                           kernel_size=3, 
                           stride=3, 
                           padding=1),
-                nn.BatchNorm2d(32, momentum=0.15),
+                nn.BatchNorm2d(params['cnn_filters'][0], momentum=0.15),
                 #nn.ReLU())
                 nn.LeakyReLU(negative_slope=0.2))
         self.Conv2D2 = nn.Sequential(
-                nn.Conv2d(in_channels=32, 
-                          out_channels=64, 
+                nn.Conv2d(in_channels=params['cnn_filters'][0], 
+                          out_channels=params['cnn_filters'][1], 
                           kernel_size=3, 
                           stride=3, 
                           padding=1),
-                nn.BatchNorm2d(64, momentum=0.15),
+                nn.BatchNorm2d(params['cnn_filters'][1], momentum=0.15),
                 #nn.ReLU())
                 nn.LeakyReLU(negative_slope=0.2))
         self.Conv2D3 = nn.Sequential(
-                nn.Conv2d(in_channels=64, 
-                          out_channels=128, 
+                nn.Conv2d(in_channels=params['cnn_filters'][1], 
+                          out_channels=params['cnn_filters'][2], 
                           kernel_size=3, 
                           stride=3, 
                           padding=0),
-                nn.BatchNorm2d(128, momentum=0.15),
+                nn.BatchNorm2d(params['cnn_filters'][2], momentum=0.15),
                 #nn.ReLU())
                 nn.LeakyReLU(negative_slope=0.2))
         self.Conv2D4 = nn.Sequential(
-                nn.Conv2d(in_channels=128, 
-                          out_channels=256, 
+                nn.Conv2d(in_channels=params['cnn_filters'][2], 
+                          out_channels=params['cnn_filters'][3], 
                           kernel_size=3, 
                           stride=3, 
                           padding=0),
-                nn.BatchNorm2d(256, momentum=0.15),
+                nn.BatchNorm2d(params['cnn_filters'][3], momentum=0.15),
                 #nn.ReLU())
                 nn.LeakyReLU(negative_slope=0.2))
         self.Conv2D5 = nn.Sequential(
-                nn.Conv2d(in_channels=256, 
-                          out_channels=512, 
+                nn.Conv2d(in_channels=params['cnn_filters'][3], 
+                          out_channels=params['cnn_filters'][4], 
                           kernel_size=2, 
                           stride=1, 
                           padding=0),
-                nn.BatchNorm2d(512, momentum=0.15),
+                nn.BatchNorm2d(params['cnn_filters'][4], momentum=0.15),
                 #nn.ReLU())
                 nn.LeakyReLU(negative_slope=0.2))
 
@@ -60,32 +60,32 @@ class Generator(nn.Module):
                                   nn.BatchNorm1d(2*params['latent_dim']), 
                                   #nn.ReLU())
                                   nn.LeakyReLU(negative_slope=0.2))
-        self.LinearT  =   nn.Sequential(nn.Linear(3, 1024),
-                                  nn.BatchNorm1d(1024), 
+        self.LinearT  =   nn.Sequential(nn.Linear(3, params['lin_neurons'][0]),
+                                  nn.BatchNorm1d(params['lin_neurons'][0]), 
                                   #nn.ReLU(),
                                   nn.LeakyReLU(negative_slope=0.2),
                                   nn.Dropout(0.25),
-                                  nn.Linear(1024,  1024), 
-                                  nn.BatchNorm1d(1024), 
+                                  nn.Linear(params['lin_neurons'][0],  params['lin_neurons'][1]), 
+                                  nn.BatchNorm1d(params['lin_neurons'][1]), 
                                   #nn.ReLU(),            
                                   nn.LeakyReLU(negative_slope=0.2),                                     
                                   nn.Dropout(0.25),                                                  
-                                  nn.Linear(1024,  params['latent_dim']), 
+                                  nn.Linear(params['lin_neurons'][1],  params['latent_dim']), 
                                   nn.BatchNorm1d(params['latent_dim']), 
                                   #nn.ReLU(),                                                 
                                   nn.LeakyReLU(negative_slope=0.2),
                                   nn.Dropout(0.25))
-        self.LinearZ  =   nn.Sequential(nn.Linear(params['latent_dim'], 1024),
-                                  nn.BatchNorm1d(1024), 
+        self.LinearZ  =   nn.Sequential(nn.Linear(params['latent_dim'], params['lin_neurons'][0]),
+                                  nn.BatchNorm1d(params['lin_neurons'][0]), 
                                   #nn.ReLU(),
                                   nn.LeakyReLU(negative_slope=0.2),
                                   nn.Dropout(0.25),
-                                  nn.Linear(1024,  1024), 
-                                  nn.BatchNorm1d(1024), 
+                                  nn.Linear(params['lin_neurons'][0],  params['lin_neurons'][1]), 
+                                  nn.BatchNorm1d(params['lin_neurons'][1]), 
                                   #nn.ReLU(),                       
                                   nn.LeakyReLU(negative_slope=0.2),                          
                                   nn.Dropout(0.25),                                                  
-                                  nn.Linear(1024,  params['latent_dim']), 
+                                  nn.Linear(params['lin_neurons'][1],  params['latent_dim']), 
                                   nn.BatchNorm1d(params['latent_dim']), 
                                   #nn.ReLU(),      
                                   nn.LeakyReLU(negative_slope=0.2),                                           

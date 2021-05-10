@@ -37,6 +37,8 @@ def hyperparameters(w=320,
                     seq_len=50,
                     history_length=8, 
                     future_length=12,
+                    cnn_filters=["32", "64", "128", "256", "512"],
+                    lin_neurons=["1024", "1024"],
                     enc_layers=2,
                     lstm_dim=128,
                     output_dim=2,
@@ -52,12 +54,22 @@ def hyperparameters(w=320,
     w4, h4 = w3/3, h3/3
     w5, h5 = w4-1, h4-1
 
+    cnn_filters_int = []
+    for filter_len in cnn_filters:
+        cnn_filters_int.append(int(filter_len))
+
+    lin_neurons_int = []
+    for filter_len in lin_neurons:
+        lin_neurons_int.append(int(filter_len))
+
     onadict = {
         'latent_dim'     : latent_dim,
         'seq_len'        : seq_len,
         'history'        : history_length,
         'predict_seq'    : future_length,
-        'afterconv'      : int(512*w5*h5),
+        'afterconv'      : int(cnn_filters_int[-1]*w5*h5),
+        'cnn_filters'    : cnn_filters_int,
+        'lin_neurons'    : lin_neurons_int,
         'enc_layers'     : enc_layers,
         'lstm_dim'       : lstm_dim,
         'output_dim'     : output_dim,
@@ -92,3 +104,16 @@ class AddUniformNoise(object):
     
     def __repr__(self):
         return self.__class__.__name__ + '(mean={0}, std={1})'.format(self.mean, self.std)
+
+def count_parameters(model):
+    totalparams = 0
+    for params in list(model.parameters()):
+        curr = 1
+
+        for s in list(params.size()):
+            curr *= s
+        
+        totalparams += curr
+
+    return totalparams
+        

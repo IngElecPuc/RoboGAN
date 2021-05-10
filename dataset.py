@@ -104,14 +104,14 @@ class RobotDataset(Dataset):
         return len(self.trajpaths)
 
 class OnlineProcessing(Dataset):
-    def __init__(self, imgs, routes, objs, history, prediction, latent_dim, transforms):
+    def __init__(self, imgs, routes, objs, history, prediction, noise, transforms):
         self.imgs = imgs
         self.routes = routes
         self.objs = objs
         self.history = history
         self.prediction = prediction
         self.transforms = transforms
-        self.noise = torch.randn((history, latent_dim))
+        self.noise = noise
 
     def __getitem__(self, idx):
   

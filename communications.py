@@ -72,6 +72,7 @@ class TCPClient():
         imgs = []
         traj = []
         objs = []
+        new_simulation = False
         
         if self.connected:
             while True:
@@ -82,12 +83,15 @@ class TCPClient():
                 imglen = int(header.decode(self.text_coding))
                 byteimg = full_msg[self.headersize:(self.headersize + imglen)]
                 full_msg = full_msg[(self.headersize + imglen):]
-                if byteimg.find(b'<SON>') == -1 and byteimg.find(b'<EOC>') == -1:
+                if byteimg.find(b'<NEW>') > 0:
+                    new_simulation = True
+                    continue
+                if byteimg.find(b'<SON>') == -1 and byteimg.find(b'<EOS>') == -1 and byteimg.find(b'<EOC>') == -1:
                     img = Image.open(io.BytesIO(byteimg))                
                     imgs.append(img)        
                 else:
                     break
-
+            
             header = full_msg[:self.headersize]
             trajlen = int(header.decode(self.text_coding))
             traj = full_msg[self.headersize:(self.headersize + trajlen)].decode(self.text_coding)
@@ -114,10 +118,11 @@ class TCPClient():
                 obj = [float(obj[0]), float(obj[1])]
                 objs.append(obj)
         
-        return imgs, traj, objs
+        return imgs, traj, objs, new_simulation
 
     def Send(self, prediction):
         prediction = prediction.cpu().detach().numpy()
+        prediction = prediction[0]
         msg = ''
         for (i, line) in enumerate(prediction):
             for (j, num) in enumerate(line):

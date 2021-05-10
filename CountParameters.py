@@ -1,13 +1,9 @@
 import argparse
 import torch
 import torch.nn as nn
-from torchvision import transforms as tfs
-from torch.utils.data import DataLoader
-from utils import hyperparameters
-from dataset import RobotDataset, dataset_explore
+from utils import *
 from generator import Generator
 from discriminator import Discriminator
-from training import train_gan, test_gan
 import numpy as np 
 
 if __name__ == '__main__':
@@ -22,7 +18,7 @@ if __name__ == '__main__':
     #parser.add_argument('--cnn_filters', help='cnn filters in a list (without square parentesis)', nargs="+", default=["32", "64", "128", "256", "512"], type=int)
     parser.add_argument('--cnn_filters', help='cnn filters in a list (without square parentesis)', nargs="+", default=["16", "32", "64", "128", "256"], type=int)
     #parser.add_argument('--lin_neurons', help='neurons of each linae input layer in a list (without square parentesis)', nargs="+", default=["1024", "1024"], type=int)
-    parser.add_argument('--lin_neurons', help='neurons of each linae input layer in a list (without square parentesis)', nargs="+", default=["1024", "1024"], type=int)
+    parser.add_argument('--lin_neurons', help='neurons of each linae input layer in a list (without square parentesis)', nargs="+", default=["256", "256"], type=int)
     parser.add_argument('--enc_layers', help='encoder layers', default=2, type=int)
     #parser.add_argument('--lstm_dim', help='lstm latent dimension', default=512, type=int)
     parser.add_argument('--lstm_dim', help='lstm latent dimension', default=128, type=int)
@@ -42,7 +38,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_workers', help='workers number', default=1, type=int)
     args = parser.parse_args()
 
-    seq_len = max([dataset_explore('train'), dataset_explore('valid'), dataset_explore('test')]) #Max sequence length in the data set
+    seq_len = 170
 
     netparams = hyperparameters(w=args.width, 
                             h=args.height, 
@@ -58,68 +54,13 @@ if __name__ == '__main__':
                             down_criterion=args.down,
                             alpha=args.alpha,
                             beta=args.beta,
-                            attention=args.attention)                            
+                            attention=args.attention)                             
 
-    data_transforms = tfs.Compose([tfs.Resize((320, 239)),
-                               tfs.ToTensor(),
-                               tfs.Normalize([0.5, 0.5, 0.5, 0.5], [0.5, 0.5, 0.5, 0.5])])
-
-    train_set = RobotDataset('train', 
-                            args.latent_dim, 
-                            seq_len, 
-                            data_transforms)
-    valid_set = RobotDataset('valid', 
-                            args.latent_dim, 
-                            seq_len,
-                            data_transforms)
-    test__set = RobotDataset('test', 
-                            args.latent_dim, 
-                            seq_len,
-                            data_transforms)
-
-    train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True)
-    valid_loader = DataLoader(valid_set, batch_size=args.batch_size, shuffle=False)
-    test__loader = DataLoader(test__set, batch_size=args.batch_size, shuffle=False)
-
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    #device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cpu')
 
     gen = Generator(netparams, device).to(device)
     dis = Discriminator(netparams, device).to(device)
 
-    if args.gopti == 'adam':
-        gen_opti = torch.optim.Adam(gen.parameters(), lr=args.genlr)
-    else:
-        gen_opti = torch.optim.SGD(gen.parameters(), lr=args.genlr)
-
-    if args.dopti == 'adam':
-        dis_opti = torch.optim.Adam(dis.parameters(), lr=args.dislr)
-    else:
-        dis_opti = torch.optim.SGD(dis.parameters(), lr=args.dislr)
-
-    log = train_gan(args.epochs, 
-            gen, 
-            dis, 
-            train_loader, 
-            valid_loader, 
-            gen_opti, 
-            dis_opti, 
-            netparams, 
-            device,
-            args.name)
-
-    mini_log = test_gan(gen, 
-            dis, 
-            test__loader, 
-            gen_opti, 
-            dis_opti, 
-            netparams, 
-            device)
-
-    log['testg_loss'] = mini_log[0]
-    log['testd_loss'] = mini_log[1]
-    log['testd_ADE'] = mini_log[2]
-    log['testd_FDE'] = mini_log[3]
-
-    import json 
-    with open('Training_log_' + args.name + '.txt', 'w') as json_file:
-        json.dump(log, json_file)
+    print(F'The generator has {count_parameters(gen)} parameters')
+    print(F'The discriminator has {count_parameters(dis)} parameters')
