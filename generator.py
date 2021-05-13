@@ -60,7 +60,7 @@ class Generator(nn.Module):
                                   nn.BatchNorm1d(2*params['latent_dim']), 
                                   #nn.ReLU())
                                   nn.LeakyReLU(negative_slope=0.2))
-        self.LinearT  =   nn.Sequential(nn.Linear(3, params['lin_neurons'][0]),
+        self.LinearT  =   nn.Sequential(nn.Linear(params['output_dim'], params['lin_neurons'][0]),
                                   nn.BatchNorm1d(params['lin_neurons'][0]), 
                                   #nn.ReLU(),
                                   nn.LeakyReLU(negative_slope=0.2),
@@ -104,10 +104,10 @@ class Generator(nn.Module):
         typeattention = True if params['attention'] == 'add' else False
         self.Attention =  AttetionLayer(params['lstm_dim'], params['lstm_dim'], additive=typeattention)
         self.Decoder   =  nn.LSTMCell(params['lstm_dim'], params['lstm_dim'], bias=True)
-        self.LinearOut =  nn.Sequential(nn.Linear(params['lstm_dim'] + params['output_dim'], 3), 
+        self.LinearOut =  nn.Sequential(nn.Linear(params['lstm_dim'], params['output_dim']), 
                                   nn.Tanh())
 
-    def forward(self, imgs, z, past_traj, target):
+    def forward(self, imgs, z, past_traj):
         b, s, c, w, h = imgs.shape #[batch, seq_len, num_channels, width, height]
         imgs = imgs.reshape(b*s, c, w, h) #4 dim tensor to Conv2D
 
@@ -121,7 +121,7 @@ class Generator(nn.Module):
         x = x.reshape(-1, c*w*h)
         
         x = self.LinearI(x)        
-        t = self.LinearT(past_traj.reshape(-1, 3))
+        t = self.LinearT(past_traj.reshape(-1, self.p['output_dim']))
         x = torch.cat((x.reshape(b, s, -1), t.reshape(b, s, -1)), 2)
         z = self.LinearZ(z.reshape(-1, self.p['latent_dim']))
         x = torch.cat((x, z.reshape(b, s, -1)), 2)
@@ -133,19 +133,15 @@ class Generator(nn.Module):
         h0_dec = torch.zeros((b, self.p['lstm_dim'])).to(self.device) 
         c0_dec = torch.zeros((b, self.p['lstm_dim'])).to(self.device)
         
-        target = target.permute(1,0,2)[s-1] #current robot target position (the last in the array)
-
         for step in range(self.p['predict_seq']):
             if step == 0:
                 context_vector = self.Attention(h0_dec, ht_enc[self.p['enc_layers']-1])
                 ht_dec, ct_dec = self.Decoder(context_vector, (h0_dec, c0_dec))
-                x = torch.cat((ht_dec, target), 1)
-                out = self.LinearOut(x).reshape(b, 1, -1)
+                out = self.LinearOut(ht_dec).reshape(b, 1, -1)
             else:
                 context_vector = self.Attention(ht_dec, ht_enc[self.p['enc_layers']-1])
                 ht_dec, ct_dec = self.Decoder(context_vector, (ht_dec, ct_dec))
-                x = torch.cat((ht_dec, target), 1)
-                x = self.LinearOut(x)
+                x = self.LinearOut(ht_dec)
                 out = torch.cat((out, x.reshape(b, 1, -1)), 1)    
         
         return out

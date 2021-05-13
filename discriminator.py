@@ -60,7 +60,7 @@ class Discriminator(nn.Module):
                                   #nn.BatchNorm1d(2*params['latent_dim']), 
                                   nn.LeakyReLU(negative_slope=0.2),
                                   nn.Dropout(0.25))
-        self.LinearT  =   nn.Sequential(nn.Linear(3, params['lin_neurons'][0]),
+        self.LinearT  =   nn.Sequential(nn.Linear(params['output_dim'], params['lin_neurons'][0]),
                                   #nn.BatchNorm1d(params['lin_neurons'][0]), 
                                   nn.LeakyReLU(negative_slope=0.2),
                                   nn.Dropout(0.25),
@@ -71,7 +71,7 @@ class Discriminator(nn.Module):
                                   nn.Linear(params['lin_neurons'][1],  params['latent_dim']), 
                                   nn.BatchNorm1d(params['latent_dim']), 
                                   nn.LeakyReLU(negative_slope=0.2))
-        self.LinearP  =   nn.Sequential(nn.Linear(3, params['lin_neurons'][0]),
+        self.LinearP  =   nn.Sequential(nn.Linear(params['output_dim'], params['lin_neurons'][0]),
                                   #nn.BatchNorm1d(params['lin_neurons'][0]), 
                                   nn.LeakyReLU(negative_slope=0.2),
                                   nn.Dropout(0.25),
@@ -101,16 +101,11 @@ class Discriminator(nn.Module):
         typeattention = True if params['attention'] == 'add' else False
         self.Attention =  AttetionLayer(params['lstm_dim'], params['lstm_dim'], additive=typeattention)
         self.Decoder   =  nn.LSTMCell(params['lstm_dim'], params['lstm_dim'], bias=True)
-        self.LinearObj =  nn.Sequential(nn.Linear(2, params['latent_dim']), 
-                                  nn.BatchNorm1d(params['latent_dim']), 
-                                  nn.LeakyReLU(negative_slope=0.2),
-                                  nn.Dropout(0.25))        
         self.LinearOut =  nn.Sequential(nn.Linear(params['lstm_dim'] *
-                                                  params['predict_seq'] + 
-                                                  params['latent_dim'], 1), 
+                                                  params['predict_seq'], 1), 
                                   nn.Sigmoid())
 
-    def forward(self, imgs, prediction, past_traj, target):
+    def forward(self, imgs, prediction, past_traj):
         b, s, c, w, h = imgs.shape #[batch, seq_len, num_channels, width, height]
         imgs = imgs.reshape(b*s, c, w, h) #4 dim tensor to Conv2D
 
@@ -124,9 +119,9 @@ class Discriminator(nn.Module):
         x = x.reshape(-1, c*w*h)
         
         x = self.LinearI(x)        
-        t = self.LinearT(past_traj.reshape(-1, 3))
+        t = self.LinearT(past_traj.reshape(-1, self.p['output_dim']))
         x = torch.cat((x.reshape(b, s, -1), t.reshape(b, s, -1)), 2)
-        p = self.LinearP(prediction.reshape(-1, 3))
+        p = self.LinearP(prediction.reshape(-1, self.p['output_dim']))
         p = p.reshape(b, -1, self.p['latent_dim'])
         p = self.DownTime(p.permute(0, 2, 1))
         x = torch.cat((x, p.permute(0, 2, 1)), 2)
@@ -148,9 +143,6 @@ class Discriminator(nn.Module):
                 ht_dec, ct_dec = self.Decoder(context_vector, (ht_dec, ct_dec))
                 classif = torch.cat((classif, ht_dec), 1)
         
-        target = target.permute(1,0,2)[s-1] #current robot target position (the last in the array)
-        o = self.LinearObj(target)
-        classif = torch.cat((classif, o), 1)
         out = self.LinearOut(classif)
 
         return out

@@ -10,7 +10,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='for training')
     parser.add_argument('--name', help='Sesion name', default='simple', type=str)
     #parser.add_argument('--latent_dim', help='Z latent dimension', default=512, type=int)
-    parser.add_argument('--latent_dim', help='Z latent dimension', default=64, type=int)
+    parser.add_argument('--latent_dim', help='Z latent dimension', default=128, type=int)
     parser.add_argument('--history_length', help='history window', default=8, type=int)
     parser.add_argument('--future_length', help='prediction steps', default=12, type=int)
     parser.add_argument('--width', help='image width', default=320, type=int)
