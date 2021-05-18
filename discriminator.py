@@ -129,20 +129,22 @@ class Discriminator(nn.Module):
         h0_enc = torch.zeros((self.p['enc_layers'], b, self.p['lstm_dim'])).to(self.device)
         c0_enc = torch.zeros((self.p['enc_layers'], b, self.p['lstm_dim'])).to(self.device) 
         unpacked, (ht_enc, ct_enc) = self.Encoder(x, (h0_enc, c0_enc))
-        
-        h0_dec = torch.zeros((b, self.p['lstm_dim'])).to(self.device) 
-        c0_dec = torch.zeros((b, self.p['lstm_dim'])).to(self.device)
-        
+
+        out_seq = list()
+        ht_dec = torch.zeros((b, self.p['lstm_dim'])).to(self.device)
+        ct_dec = torch.zeros((b, self.p['lstm_dim'])).to(self.device)
+
         for step in range(self.p['predict_seq']):
-            if step == 0:
-                context_vector = self.Attention(h0_dec, ht_enc[self.p['enc_layers']-1])
-                ht_dec, ct_dec = self.Decoder(context_vector, (h0_dec, c0_dec))
-                classif = ht_dec
-            else:
-                context_vector = self.Attention(ht_dec, ht_enc[self.p['enc_layers']-1])
-                ht_dec, ct_dec = self.Decoder(context_vector, (ht_dec, ct_dec))
-                classif = torch.cat((classif, ht_dec), 1)
-        
-        out = self.LinearOut(classif)
+             context_vector = self.Attention(ht_dec, ht_enc[self.p['enc_layers']-1])
+             ht_dec, ct_dec = self.Decoder(context_vector, (ht_dec, ct_dec))
+             out_seq.append(ht_dec)
+
+        out = torch.stack(out_seq, dim=1)
+        out = self.LinearOut(out.reshape(b, -1))
 
         return out
+
+
+
+
+

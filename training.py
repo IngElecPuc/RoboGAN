@@ -117,6 +117,7 @@ def gan_epoch(gen, dis, loader, gen_opti, dis_opti, params, device, train_model=
     dis_mean_loss = 0
     ADE_mean = 0
     FDE_mean = 0
+    torch.autograd.set_detect_anomaly(True)
 
     for (num_batch, batch) in enumerate(loader): #Adjust window of the seq to this method
        
@@ -146,9 +147,10 @@ def gan_epoch(gen, dis, loader, gen_opti, dis_opti, params, device, train_model=
 
             gen.zero_grad()
             dis.zero_grad()
-            fake_routes = gen(imgs, z, past_routes, past_obj)
-            real_output = dis(imgs, real_routes, past_routes, past_obj)
-            fake_output = dis(imgs, fake_routes, past_routes, past_obj)
+            fake_routes = gen(imgs, z, past_routes)
+            real_output = dis(imgs, real_routes, past_routes)
+            fake_output = dis(imgs, fake_routes, past_routes)
+            
             ADE_mean += ADE(real_routes, fake_routes)
             FDE_mean += FDE(real_routes, fake_routes)
 
@@ -159,7 +161,7 @@ def gan_epoch(gen, dis, loader, gen_opti, dis_opti, params, device, train_model=
                 dis_opti.step()
             dis_mean_loss += dis_loss.item()
 
-            #fake_output = dis(imgs, fake_routes, past_routes, past_obj) #Check if this step is really necessary
+            fake_output = dis(imgs, fake_routes, past_routes) #Check if this step is really necessary
             gen_loss = generator_loss(fake_output, fake_routes, real_routes, params)
             gen_opti.zero_grad()
             if (train_model):

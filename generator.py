@@ -120,28 +120,25 @@ class Generator(nn.Module):
         _, c, w, h = x.shape
         x = x.reshape(-1, c*w*h)
         
-        x = self.LinearI(x)        
+        x = self.LinearI(x)      
         t = self.LinearT(past_traj.reshape(-1, self.p['output_dim']))
         x = torch.cat((x.reshape(b, s, -1), t.reshape(b, s, -1)), 2)
         z = self.LinearZ(z.reshape(-1, self.p['latent_dim']))
         x = torch.cat((x, z.reshape(b, s, -1)), 2)
-        
         h0_enc = torch.zeros((self.p['enc_layers'], b, self.p['lstm_dim'])).to(self.device)
         c0_enc = torch.zeros((self.p['enc_layers'], b, self.p['lstm_dim'])).to(self.device) 
         unpacked, (ht_enc, ct_enc) = self.Encoder(x, (h0_enc, c0_enc))
-        
-        h0_dec = torch.zeros((b, self.p['lstm_dim'])).to(self.device) 
-        c0_dec = torch.zeros((b, self.p['lstm_dim'])).to(self.device)
-        
+
+        out_seq = list()
+        ht_dec = torch.zeros((b, self.p['lstm_dim'])).to(self.device) 
+        ct_dec = torch.zeros((b, self.p['lstm_dim'])).to(self.device)
+
         for step in range(self.p['predict_seq']):
-            if step == 0:
-                context_vector = self.Attention(h0_dec, ht_enc[self.p['enc_layers']-1])
-                ht_dec, ct_dec = self.Decoder(context_vector, (h0_dec, c0_dec))
-                out = self.LinearOut(ht_dec).reshape(b, 1, -1)
-            else:
-                context_vector = self.Attention(ht_dec, ht_enc[self.p['enc_layers']-1])
-                ht_dec, ct_dec = self.Decoder(context_vector, (ht_dec, ct_dec))
-                x = self.LinearOut(ht_dec)
-                out = torch.cat((out, x.reshape(b, 1, -1)), 1)    
-        
+             context_vector = self.Attention(ht_dec, ht_enc[self.p['enc_layers']-1])
+             ht_dec, ct_dec = self.Decoder(context_vector, (ht_dec, ct_dec))
+             x = self.LinearOut(ht_dec)
+             out_seq.append(x)
+
+        out = torch.stack(out_seq, dim=1)
+
         return out
