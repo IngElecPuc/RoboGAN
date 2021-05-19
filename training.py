@@ -5,6 +5,7 @@ from matplotlib import pyplot as plt
 import time
 import datetime
 import json
+import numpy as np
 
 def trimm(batch, sequence_length, past_length, future_length, stride, trim_mode='absolute'):
     #This fuction will cut the entire sequence in chunks for the prediction
@@ -103,7 +104,7 @@ def reconstruct(trimmed, sequence_length, past_length, stride):
     
     return trajectory.permute(2, 1, 0)
         
-def gan_epoch(gen, dis, loader, gen_opti, dis_opti, params, device, train_model=True, epoch_info=True):
+def gan_epoch(gen, dis, loader, gen_opti, dis_opti, params, device, train_model=True):
 
     if (train_model):
         gen.train()
@@ -113,11 +114,10 @@ def gan_epoch(gen, dis, loader, gen_opti, dis_opti, params, device, train_model=
         dis.eval()
         torch.no_grad()
 
-    gen_mean_loss = 0
-    dis_mean_loss = 0
-    ADE_mean = 0
-    FDE_mean = 0
-    torch.autograd.set_detect_anomaly(True)
+    gen_mean_loss = []
+    dis_mean_loss = []
+    ADE_mean = []
+    FDE_mean = []
 
     for (num_batch, batch) in enumerate(loader): #Adjust window of the seq to this method
        
@@ -151,15 +151,15 @@ def gan_epoch(gen, dis, loader, gen_opti, dis_opti, params, device, train_model=
             real_output = dis(imgs, real_routes, past_routes)
             fake_output = dis(imgs, fake_routes, past_routes)
             
-            ADE_mean += ADE(real_routes, fake_routes)
-            FDE_mean += FDE(real_routes, fake_routes)
+            ADE_mean.append(ADE(real_routes, fake_routes) / trimmed['batch_size'])
+            FDE_mean.append(FDE(real_routes, fake_routes) / trimmed['batch_size'])
 
             dis_loss = discriminator_loss(real_output, fake_output, params)
             dis_opti.zero_grad()
             if (train_model):
                 dis_loss.backward(retain_graph=True)
                 dis_opti.step()
-            dis_mean_loss += dis_loss.item()
+            dis_mean_loss.append(dis_loss.item() / trimmed['batch_size'])
 
             fake_output = dis(imgs, fake_routes, past_routes) #Check if this step is really necessary
             gen_loss = generator_loss(fake_output, fake_routes, real_routes, params)
@@ -167,22 +167,9 @@ def gan_epoch(gen, dis, loader, gen_opti, dis_opti, params, device, train_model=
             if (train_model):
                 gen_loss.backward(retain_graph=True)
                 gen_opti.step()
-            gen_mean_loss += gen_loss.item()
+            gen_mean_loss.append(gen_loss.item() / trimmed['batch_size'])
         
-        if not train_model:
-            print('{:.2f} percent of current epoch'.format((num_batch+1)*loader.batch_size/len(loader.dataset)*100))
-
-        if not epoch_info: #append to variable, change this
-            gen_mean_loss /= trimmed['batch_size']
-            dis_mean_loss /= trimmed['batch_size']
-            ADE_mean /= trimmed['batch_size']
-            FDE_mean /= trimmed['batch_size']
-
-    if epoch_info:
-        gen_mean_loss /= len(loader.dataset)
-        dis_mean_loss /= len(loader.dataset)
-        ADE_mean /= len(loader.dataset)
-        FDE_mean /= len(loader.dataset)
+        print('{:.2f} percent of current epoch'.format((num_batch+1)*loader.batch_size/len(loader.dataset)*100))
 
     return gen_mean_loss, dis_mean_loss, ADE_mean, FDE_mean
 
@@ -205,14 +192,14 @@ def train_gan(nepochs, gen, dis, train_loader, valid_loader, gen_opti, dis_opti,
 
         gen_t_loss, dis_t_loss, ADE_t, FDE_t = gan_epoch(gen, dis, train_loader, gen_opti, dis_opti, params, device, train_model=True)
         gen_v_loss, dis_v_loss, ADE_v, FDE_v = gan_epoch(gen, dis, valid_loader, gen_opti, dis_opti, params, device, train_model=False)
-        training_log['gen_t_loss'].append(gen_t_loss)
-        training_log['dis_t_loss'].append(dis_t_loss)
-        training_log['ADE_t'].append(ADE_t)
-        training_log['FDE_t'].append(FDE_t)
-        training_log['gen_v_loss'].append(gen_v_loss)
-        training_log['dis_v_loss'].append(dis_v_loss)
-        training_log['ADE_v'].append(ADE_v)
-        training_log['FDE_v'].append(FDE_v)
+        training_log['gen_t_loss'] += gen_t_loss
+        training_log['dis_t_loss'] += dis_t_loss
+        training_log['ADE_t'] += ADE_t
+        training_log['FDE_t'] += FDE_t
+        training_log['gen_v_loss'] += gen_v_loss
+        training_log['dis_v_loss'] += dis_v_loss
+        training_log['ADE_v'] += ADE_v
+        training_log['FDE_v'] += FDE_v
 
         msg = 'Epoch {:03d}: time {} sec, gen_t_loss {:.3f}, dis_t_loss {:.3f}, ADE_t {:.3f}, FDE_t {:.3f}, gen_v_loss {:.3f}, dis_v_loss {:.3f}, ADE_v {:.3f}, FDE_v {:.3f}\n'
         msg.format(epoch+1, 
@@ -230,45 +217,47 @@ def train_gan(nepochs, gen, dis, train_loader, valid_loader, gen_opti, dis_opti,
         with open('train_progress' + name + '.txt', 'w') as json_file:
             json.dump(msg, json_file)
 
-        torch.save(gen.state_dict(), './gen.pth')
-        torch.save(dis.state_dict(), './dis.pth')
+        torch.save(gen.state_dict(), './gen_' + name + '.pth')
+        torch.save(dis.state_dict(), './dis_' + name + '.pth')
+
+    numiters = list(range(len(training_log['gen_t_loss'])))
 
     plt.figure(figsize=(12.8, 19.2))
     plt.subplot(4, 3, 1)
-    plt.plot(list(range(nepochs)), training_log['gen_t_loss'])
+    plt.plot(numiters, training_log['gen_t_loss'])
     plt.title('Generator training loss')
     plt.subplot(4, 3, 2)
-    plt.plot(list(range(nepochs)), training_log['dis_t_loss'])
+    plt.plot(numiters, training_log['dis_t_loss'])
     plt.title('Discriminator training loss')
     plt.subplot(4, 3, 3)
-    plt.plot(list(range(nepochs)), training_log['gen_t_loss'], list(range(nepochs)), training_log['dis_t_loss'])
+    plt.plot(numiters, training_log['gen_t_loss'], numiters, training_log['dis_t_loss'])
     plt.title('Both of them')
     plt.subplot(4, 3, 4)
-    plt.plot(list(range(nepochs)), training_log['gen_v_loss'])
+    plt.plot(numiters, training_log['gen_v_loss'])
     plt.title('Generator validation loss')
     plt.subplot(4, 3, 5)
-    plt.plot(list(range(nepochs)), training_log['dis_v_loss'])
+    plt.plot(numiters, training_log['dis_v_loss'])
     plt.title('Discriminator validation loss')
     plt.subplot(4, 3, 6)
-    plt.plot(list(range(nepochs)), training_log['gen_v_loss'], list(range(nepochs)), training_log['dis_v_loss'])
+    plt.plot(numiters, training_log['gen_v_loss'], numiters, training_log['dis_v_loss'])
     plt.title('Both of them')
     plt.subplot(4, 3, 7)
-    plt.plot(list(range(nepochs)), training_log['ADE_t'])
+    plt.plot(numiters, training_log['ADE_t'])
     plt.title('Average displacement error in training')
     plt.subplot(4, 3, 8)
-    plt.plot(list(range(nepochs)), training_log['ADE_v'])
+    plt.plot(numiters, training_log['ADE_v'])
     plt.title('Average displacement error in validation')
     plt.subplot(4, 3, 9)
-    plt.plot(list(range(nepochs)), training_log['ADE_t'], list(range(nepochs)), training_log['ADE_v'])
+    plt.plot(numiters, training_log['ADE_t'], numiters, training_log['ADE_v'])
     plt.title('Both of them')
     plt.subplot(4, 3, 10)
-    plt.plot(list(range(nepochs)), training_log['FDE_t'])
+    plt.plot(numiters, training_log['FDE_t'])
     plt.title('Final displacement error in training')
     plt.subplot(4, 3, 11)
-    plt.plot(list(range(nepochs)), training_log['FDE_v'])
+    plt.plot(numiters, training_log['FDE_v'])
     plt.title('Final displacement error in validation')
     plt.subplot(4, 3, 12)
-    plt.plot(list(range(nepochs)), training_log['FDE_t'], list(range(nepochs)), training_log['FDE_v'])
+    plt.plot(numiters, training_log['FDE_t'], numiters, training_log['FDE_v'])
     plt.title('Both of them')
     #plt.show() #Save img instead
     plt.savefig('train_statistics_' + name + '.png')
@@ -280,5 +269,11 @@ def test_gan(gen, dis, test_loader, gen_opti, dis_opti, params, device):
     gen_loss, dis_loss, ADE_m, FDE_m = gan_epoch(gen, dis, test_loader, gen_opti, dis_opti, params, device, train_model=False)
     print('Starting testing')
     msg = 'Time {} sec, gen_loss {:.3f}, dis_loss {:.3f}, ADE {:.3f}, FDE {:.3f}'
-    print(msg.format(datetime.timedelta(seconds=int(time.time()-start)), gen_loss, dis_loss, ADE_m, FDE_m))
+    print(msg.format(datetime.timedelta(seconds=int(time.time()-start)), mean(gen_loss), mean(dis_loss), mean(ADE_m), mean(FDE_m)))
     return gen_loss, dis_loss, ADE_m, FDE_m
+
+def mean(a):
+    n = 0
+    for e in a:
+        n += e
+    return n/len(a)

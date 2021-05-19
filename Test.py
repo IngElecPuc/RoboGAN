@@ -12,23 +12,22 @@ import numpy as np
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='for testing')
-    parser.add_argument('--gen_weights', help='Name of generator weigths file', default='gen.pth', type=str)
-    parser.add_argument('--latent_dim', help='Z latent dimension', default=512, type=int)
+    parser.add_argument('--name', help='Sesion name', default='simple', type=str)
+    parser.add_argument('--latent_dim', help='Z latent dimension', default=128, type=int)
     parser.add_argument('--history_length', help='history window', default=8, type=int)
     parser.add_argument('--future_length', help='prediction steps', default=12, type=int)
     parser.add_argument('--width', help='image width', default=320, type=int)
     parser.add_argument('--height', help='image height', default=239, type=int)
+    parser.add_argument('--cnn_filters', help='cnn filters in a list (without square parentesis)', nargs="+", default=["16", "32", "64", "128", "256"], type=int)
+    parser.add_argument('--lin_neurons', help='neurons of each linae input layer in a list (without square parentesis)', nargs="+", default=["256", "256"], type=int)
     parser.add_argument('--enc_layers', help='encoder layers', default=2, type=int)
-    parser.add_argument('--lstm_dim', help='lstm latent dimension', default=256, type=int)
-    parser.add_argument('--output_dim', help='generator ouptut dimension', default=2, type=int)
+    parser.add_argument('--lstm_dim', help='lstm latent dimension', default=128, type=int)
+    parser.add_argument('--output_dim', help='generator ouptut dimension', default=8, type=int)
     parser.add_argument('--backbone', help='CNN backbone [CNN_own, resnet18]',default='CNN_own', type=str)
     parser.add_argument('--attention', help='type of attention [add, mult]', default='add', type=str)
-    parser.add_argument('--gopti', help='type of optimizator for generator [adam, sgd]', default='adam', type=str)
-    parser.add_argument('--dopti', help='type of optimizator for discriminator [adam, sgd]', default='sgd', type=str)
-    parser.add_argument('--genlr', help='generator learning rate', default=1e-3, type=float)
-    parser.add_argument('--dislr', help='discriminator rate', default=1e-3, type=float)
     parser.add_argument('--batch_size', help='batch_size', default=32, type=int)
     parser.add_argument('--num_workers', help='workers number', default=1, type=int)
+
     args = parser.parse_args()
 
     seq_len = max([dataset_explore('train'), dataset_explore('valid'), dataset_explore('test')]) #Max sequence length in the data set
@@ -38,6 +37,8 @@ if __name__ == '__main__':
                             latent_dim=args.latent_dim, 
                             history_length=args.history_length, 
                             future_length=args.future_length,
+                            cnn_filters=args.cnn_filters,
+                            lin_neurons=args.lin_neurons,
                             enc_layers=args.enc_layers,
                             lstm_dim=args.lstm_dim,
                             output_dim=args.output_dim,
@@ -47,12 +48,12 @@ if __name__ == '__main__':
                                tfs.ToTensor(),
                                tfs.Normalize([0.5, 0.5, 0.5, 0.5], [0.5, 0.5, 0.5, 0.5])])
 
-    test__set = RobotDataset('test', 
+    test_set = RobotDataset('test', 
                             args.latent_dim, 
                             seq_len,
                             data_transforms)
 
-    test__loader = DataLoader(test__set, batch_size=args.batch_size, shuffle=False)
+    test_loader = DataLoader(test_set, batch_size=args.batch_size, shuffle=False)
 
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
@@ -63,18 +64,18 @@ if __name__ == '__main__':
     dis = Discriminator(netparams, device).to(device)
 
     if args.gopti == 'adam':
-        gen_opti = torch.optim.Adam(gen.parameters(), lr=args.genlr)
+        gen_opti = torch.optim.Adam(gen.parameters(), lr=1e-3)
     else:
-        gen_opti = torch.optim.SGD(gen.parameters(), lr=args.genlr)
+        gen_opti = torch.optim.SGD(gen.parameters(), lr=1e-3)
 
     if args.dopti == 'adam':
-        dis_opti = torch.optim.Adam(dis.parameters(), lr=args.dislr)
+        dis_opti = torch.optim.Adam(dis.parameters(), lr=1e-3)
     else:
-        dis_opti = torch.optim.SGD(dis.parameters(), lr=args.dislr)
+        dis_opti = torch.optim.SGD(dis.parameters(), lr=1e-3)
 
     mini_log = test_gan(gen, 
             dis, 
-            test__loader, 
+            test_loader, 
             gen_opti, 
             dis_opti, 
             netparams, 

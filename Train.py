@@ -26,7 +26,7 @@ if __name__ == '__main__':
     parser.add_argument('--enc_layers', help='encoder layers', default=2, type=int)
     #parser.add_argument('--lstm_dim', help='lstm latent dimension', default=512, type=int)
     parser.add_argument('--lstm_dim', help='lstm latent dimension', default=128, type=int)
-    parser.add_argument('--output_dim', help='generator ouptut dimension', default=2, type=int)
+    parser.add_argument('--output_dim', help='generator ouptut dimension', default=8, type=int)
     parser.add_argument('--epochs', help='training epochs', default=20, type=int)
     parser.add_argument('--backbone', help='CNN backbone [CNN_own, resnet18]',default='CNN_own', type=str)
     parser.add_argument('--attention', help='type of attention [add, mult]', default='add', type=str)
@@ -72,14 +72,9 @@ if __name__ == '__main__':
                             args.latent_dim, 
                             seq_len,
                             data_transforms)
-    test__set = RobotDataset('test', 
-                            args.latent_dim, 
-                            seq_len,
-                            data_transforms)
 
     train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True)
     valid_loader = DataLoader(valid_set, batch_size=args.batch_size, shuffle=False)
-    test__loader = DataLoader(test__set, batch_size=args.batch_size, shuffle=False)
 
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
@@ -106,19 +101,6 @@ if __name__ == '__main__':
             netparams, 
             device,
             args.name)
-
-    mini_log = test_gan(gen, 
-            dis, 
-            test__loader, 
-            gen_opti, 
-            dis_opti, 
-            netparams, 
-            device)
-
-    log['testg_loss'] = mini_log[0]
-    log['testd_loss'] = mini_log[1]
-    log['testd_ADE'] = mini_log[2]
-    log['testd_FDE'] = mini_log[3]
 
     import json 
     with open('Training_log_' + args.name + '.txt', 'w') as json_file:
