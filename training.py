@@ -137,11 +137,15 @@ def gan_epoch(gen, dis, loader, gen_opti, dis_opti, params, device, train_model=
             real_vel = trimmed['future_vel'][i].to(device)
             past_obj = trimmed['past_target'][i].to(device)
             real_obj = trimmed['future_target'][i].to(device)
+            #print(f'Shape of past_routes {past_routes.shape}')
+            #print(f'Shape of past_vel {past_vel.shape}')
+            #print(f'Shape of past_obj {past_vel.shape}')
             past_routes = torch.cat((past_routes, past_vel), axis=2)
             past_routes = torch.cat((past_routes, past_obj), axis=2)
             real_routes = torch.cat((real_routes, real_vel), axis=2)
             real_routes = torch.cat((real_routes, real_obj), axis=2)
- 
+            #print(f'Shape of concatenated {past_routes.shape}')
+
             if imgs.shape[0] == 1: #Bug at some times
                 continue
 
@@ -201,18 +205,17 @@ def train_gan(nepochs, gen, dis, train_loader, valid_loader, gen_opti, dis_opti,
         training_log['ADE_v'] += ADE_v
         training_log['FDE_v'] += FDE_v
 
-        msg = 'Epoch {:03d}: time {} sec, gen_t_loss {:.3f}, dis_t_loss {:.3f}, ADE_t {:.3f}, FDE_t {:.3f}, gen_v_loss {:.3f}, dis_v_loss {:.3f}, ADE_v {:.3f}, FDE_v {:.3f}\n'
-        msg.format(epoch+1, 
-                    datetime.timedelta(seconds=int(time.time()-start)),
-                    gen_t_loss, 
-                    dis_t_loss, 
-                    ADE_t, 
-                    FDE_t,
-                    gen_v_loss, 
-                    dis_v_loss, 
-                    ADE_v,
-                    FDE_v)
-        print(msg)        
+        msg = f'Epoch {epoch+1}: '
+        msg += f'time {datetime.timedelta(seconds=int(time.time()-start))} sec, '
+        msg += f'gen_t_loss {mean(gen_t_loss):.4f}, '
+        msg += f'dis_t_loss {mean(dis_t_loss):.4f}, '
+        msg += f'ADE_t {mean(ADE_t):.4f}, '
+        msg += f'FDE_t {mean(FDE_t):.4f}, '
+        msg += f'gen_v_loss {mean(gen_v_loss):.4f}, '
+        msg += f'dis_v_loss {mean(dis_v_loss):.4f}, '
+        msg += f'ADE_v {mean(ADE_v):.4f}, '
+        msg += f'FDE_v {mean(FDE_v):.4f}\n'
+        print(msg)
 
         with open('train_progress' + name + '.txt', 'w') as json_file:
             json.dump(msg, json_file)
@@ -220,44 +223,42 @@ def train_gan(nepochs, gen, dis, train_loader, valid_loader, gen_opti, dis_opti,
         torch.save(gen.state_dict(), './gen_' + name + '.pth')
         torch.save(dis.state_dict(), './dis_' + name + '.pth')
 
-    numiters = list(range(len(training_log['gen_t_loss'])))
-
     plt.figure(figsize=(12.8, 19.2))
     plt.subplot(4, 3, 1)
-    plt.plot(numiters, training_log['gen_t_loss'])
+    plt.plot(list(range(len(training_log['gen_t_loss']))), training_log['gen_t_loss'])
     plt.title('Generator training loss')
     plt.subplot(4, 3, 2)
-    plt.plot(numiters, training_log['dis_t_loss'])
+    plt.plot(list(range(len(training_log['dis_t_loss']))), training_log['dis_t_loss'])
     plt.title('Discriminator training loss')
     plt.subplot(4, 3, 3)
-    plt.plot(numiters, training_log['gen_t_loss'], numiters, training_log['dis_t_loss'])
+    plt.plot(list(range(len(training_log['gen_t_loss']))), training_log['gen_t_loss'], list(range(len(training_log['dis_t_loss']))), training_log['dis_t_loss'])
     plt.title('Both of them')
     plt.subplot(4, 3, 4)
-    plt.plot(numiters, training_log['gen_v_loss'])
+    plt.plot(list(range(len(training_log['gen_v_loss']))), training_log['gen_v_loss'])
     plt.title('Generator validation loss')
     plt.subplot(4, 3, 5)
-    plt.plot(numiters, training_log['dis_v_loss'])
+    plt.plot(list(range(len(training_log['dis_v_loss']))), training_log['dis_v_loss'])
     plt.title('Discriminator validation loss')
     plt.subplot(4, 3, 6)
-    plt.plot(numiters, training_log['gen_v_loss'], numiters, training_log['dis_v_loss'])
+    plt.plot(list(range(len(training_log['gen_v_loss']))), training_log['gen_v_loss'], list(range(len(training_log['dis_v_loss']))), training_log['dis_v_loss'])
     plt.title('Both of them')
     plt.subplot(4, 3, 7)
-    plt.plot(numiters, training_log['ADE_t'])
+    plt.plot(list(range(len(training_log['ADE_t']))), training_log['ADE_t'])
     plt.title('Average displacement error in training')
     plt.subplot(4, 3, 8)
-    plt.plot(numiters, training_log['ADE_v'])
+    plt.plot(list(range(len(training_log['ADE_v']))), training_log['ADE_v'])
     plt.title('Average displacement error in validation')
     plt.subplot(4, 3, 9)
-    plt.plot(numiters, training_log['ADE_t'], numiters, training_log['ADE_v'])
+    plt.plot(list(range(len(training_log['ADE_t']))), training_log['ADE_t'], list(range(len(training_log['ADE_v']))), training_log['ADE_v'])
     plt.title('Both of them')
     plt.subplot(4, 3, 10)
-    plt.plot(numiters, training_log['FDE_t'])
+    plt.plot(list(range(len(training_log['FDE_t']))), training_log['FDE_t'])
     plt.title('Final displacement error in training')
     plt.subplot(4, 3, 11)
-    plt.plot(numiters, training_log['FDE_v'])
+    plt.plot(list(range(len(training_log['FDE_v']))), training_log['FDE_v'])
     plt.title('Final displacement error in validation')
     plt.subplot(4, 3, 12)
-    plt.plot(numiters, training_log['FDE_t'], numiters, training_log['FDE_v'])
+    plt.plot(list(range(len(training_log['FDE_t']))), training_log['FDE_t'], list(range(len(training_log['FDE_v']))), training_log['FDE_v'])
     plt.title('Both of them')
     #plt.show() #Save img instead
     plt.savefig('train_statistics_' + name + '.png')
